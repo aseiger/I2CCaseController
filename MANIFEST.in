@@ -1,0 +1,4 @@
+include README.md
+recursive-include I2CCaseController/templates *
+recursive-include I2CCaseController/translations *
+recursive-include I2CCaseController/static *

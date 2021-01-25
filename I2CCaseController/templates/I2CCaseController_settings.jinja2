@@ -1,0 +1,20 @@
+<form class="form-horizontal">
+    <div class="control-group">
+        <label class="control-label">{{ _('PWM Address') }}</label>
+        <div class="controls">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.pwm_addr">
+        </div>
+        <label class="control-label">{{ _('Servo Address') }}</label>
+        <div class="controls">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.servo_addr">
+        </div>
+        <label class="control-label">{{ _('GPIO Address') }}</label>
+        <div class="controls">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.gpio_addr">
+        </div>
+        <label class="control-label">{{ _('Thermistors Addr') }}</label>
+        <div class="controls">
+            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.thermistors_addr">
+        </div>
+    </div>
+</form>
