@@ -61,7 +61,7 @@ class I2CGPIO(MCP23008):
                 break;
 
     def validate_pin(self, pin):
-        if(pin < 0 or pin > NUM_IO_PINS):
+        if(pin < 0 or pin > NUM_IO_PINS-1):
             raise ValueError('MCP23008 Pin Index Out of Bounds')
 
     def validate_direction(self, direction):
@@ -81,10 +81,10 @@ if __name__ == '__main__':
     tMCP.set_pin_value(1, 1)
 
     def pressed_callback(pin, value):
+        tMCP.set_pin_value(0, not value)
         print(pin, " ", value)
 
-    tMCP.poll_pin(2, pressed_callback)
-    tMCP.poll_pin(3, pressed_callback)
+    tMCP.poll_pin(2, pressed_callback, poll_rate = 0.1)
 
     while(1):
         tMCP.get_pin_value(3)
