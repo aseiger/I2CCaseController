@@ -62,16 +62,15 @@ class I2CPWM(adafruit_pca9685.PCA9685):
 if __name__ == '__main__':
     tPWM = I2CPWM()
 
-    time.sleep(1)
 
     lowlevel = 0
     highlevel = 1
 
-    tPWM.set_channel(3, 0)
+    tPWM.set_channel(3, 1)
     tPWM.set_channel(0, 0)
     tPWM.set_channel(1, 0)
-    tPWM.set_channel(2, 0)
-    time.sleep(1)
+    tPWM.set_channel(4, 0.4)
+    time.sleep(10)
 
     while(1):
         currentVal = tPWM.get_channel(3)

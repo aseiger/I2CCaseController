@@ -1,20 +1,47 @@
 <form class="form-horizontal">
     <div class="control-group">
+        <h4>{{ _('I2C Settings') }}</h4>
         <label class="control-label">{{ _('PWM Address') }}</label>
         <div class="controls">
-            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.pwm_addr">
+            <input type="text" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pwm_addr">
         </div>
         <label class="control-label">{{ _('Servo Address') }}</label>
         <div class="controls">
-            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.servo_addr">
+            <input type="text" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.servo_addr">
         </div>
         <label class="control-label">{{ _('GPIO Address') }}</label>
         <div class="controls">
-            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.gpio_addr">
+            <input type="text" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.gpio_addr">
         </div>
         <label class="control-label">{{ _('Thermistors Addr') }}</label>
         <div class="controls">
-            <input type="text" class="input-block-level" data-bind="value: settings.plugins.I2CCaseController.thermistors_addr">
+            <input type="text" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.thermistors_addr">
+        </div>
+        <h4>{{ _('GPIO Pins') }}</h4>
+        <label class="control-label">{{ _('Machine Power') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_gpio_machine_power">
+        </div>
+        <label class="control-label">{{ _('Fan Power') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_gpio_fan_power">
+        </div>
+        <label class="control-label">{{ _('Door Switch') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_gpio_door_switch">
+        </div>
+        <label class="control-label">{{ _('Side Button') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_gpio_side_button">
+        </div>
+        <h4>{{ _('PWM Pins') }}</h4>
+        <label class="control-label">{{ _('Case Light') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_pwm_light">
+        </div>
+        <label class="control-label">{{ _('Vent Fan') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_pwm_fan">
         </div>
     </div>
 </form>

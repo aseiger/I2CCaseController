@@ -1,5 +1,10 @@
 # coding=utf-8
 from __future__ import absolute_import
+from . import I2CGPIO
+from . import I2CPWM
+from digitalio import Direction
+import time
+import threading
 
 ### (Don't forget to remove me)
 # This is a basic skeleton for your plugin's __init__.py. You probably want to adjust the class name of your plugin
@@ -16,6 +21,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                               octoprint.plugin.AssetPlugin,
                               octoprint.plugin.TemplatePlugin):
 
+
+    tMCP = I2CGPIO.I2CGPIO()
+    tPWM = I2CPWM.I2CPWM()
+
+    lightTimer = threading.Timer(0, 0)
 	##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
@@ -23,8 +33,97 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 			pwm_addr="0x41",
             servo_addr="0x40",
             gpio_addr="0x20",
-            thermistors_addr="0x48"
+            thermistors_addr="0x48",
+            pin_gpio_machine_power="1",
+            pin_gpio_machine_on_state="0",
+            pin_gpio_fan_power="0",
+            pin_gpio_fan_power_on_state="0",
+            pin_pwm_fan="4",
+            pin_pwm_light="3",
+            pin_gpio_door_switch="2",
+            pin_gpio_side_button="3"
         )
+
+    def case_light_on(self, timeout=0):
+        self.lightTimer.cancel()
+        self.tPWM.ramp_channel(self.pin_pwm_light, 1, 4)
+        if(timeout > 0):
+            self.lightTimer = threading.Timer(timeout, self.case_light_off)
+            self.lightTimer.start()
+
+        self._logger.info("Case Light on %d", timeout)
+
+
+    def case_light_off(self, delay=0):
+        if(delay == 0):
+            self.tPWM.ramp_channel(self.pin_pwm_light, 0, 4)
+        else:
+            self.lightTimer = threading.Timer(delay, self.case_light_off)
+            self.lightTimer.start()
+
+        self._logger.info("Case Light off %d", delay)
+
+    def door_switch_callback(self, pin, value):
+        if(value == True):
+            self.case_light_on()
+        else:
+            if(not self.lightTimer.is_alive()):
+                self.case_light_off()
+
+    def side_button_callback(self, pin, value):
+        if(value == True):
+            if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
+                self.case_light_on(timeout=30)
+            else:
+                self.case_light_off()
+
+    @property
+    def pwm_addr(self):
+        return int(self._settings.get(["pwm_addr"]))
+
+    @property
+    def servo_addr(self):
+        return int(self._settings.get(["servo_addr"]))
+
+    @property
+    def gpio_addr(self):
+        return int(self._settings.get(["gpio_addr"]))
+
+    @property
+    def thermistors_addr(self):
+        return int(self._settings.get(["thermistors_addr"]))
+
+    @property
+    def pin_gpio_machine_power(self):
+        return int(self._settings.get(["pin_gpio_machine_power"]))
+
+    @property
+    def pin_gpio_machine_on_state(self):
+        return int(self._settings.get(["pin_gpio_machine_on_state"]))
+
+    @property
+    def pin_gpio_fan_power(self):
+        return int(self._settings.get(["pin_gpio_fan_power"]))
+
+    @property
+    def pin_gpio_fan_power_on_state(self):
+        return int(self._settings.get(["pin_gpio_fan_power_on_state"]))
+
+    @property
+    def pin_pwm_fan(self):
+        return int(self._settings.get(["pin_pwm_fan"]))
+
+    @property
+    def pin_pwm_light(self):
+        return int(self._settings.get(["pin_pwm_light"]))
+
+    @property
+    def pin_gpio_door_switch(self):
+        return int(self._settings.get(["pin_gpio_door_switch"]))
+
+    @property
+    def pin_gpio_side_button(self):
+        return int(self._settings.get(["pin_gpio_side_button"]))
 
     # def get_template_vars(self):
     #     return dict(
@@ -82,6 +181,30 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("GPIO Addr: %s", self._settings.get(["gpio_addr"]))
         self._logger.info("Thermistors Addr: %s", self._settings.get(["thermistors_addr"]))
 
+        self._logger.info("Machine Power GPIO Pin: %s", self._settings.get(["pin_gpio_machine_power"]))
+        self._logger.info("Fan Power GPIO Pin: %s", self._settings.get(["pin_gpio_fan_power"]))
+        self._logger.info("Fan PWM Pin: %s", self._settings.get(["pin_pwm_fan"])),
+        self._logger.info("Light PWM Pin: %s", self._settings.get(["pin_pwm_light"]))
+        self._logger.info("Door Switch GPIO Pin: %s", self._settings.get(["pin_gpio_door_switch"]))
+        self._logger.info("Side Button GPIO Pin: %s", self._settings.get(["pin_gpio_side_button"]))
+
+        self._logger.info("Machine GPIO On State: %s", self.pin_gpio_machine_on_state)
+        self._logger.info("Machine GPIO On State: %s", self.pin_gpio_fan_power_on_state)
+
+        self.tPWM.set_channel(self.pin_pwm_light, 0)
+        self.tPWM.set_channel(self.pin_pwm_fan, 0)
+
+        self.tMCP.set_direction(self.pin_gpio_machine_power, Direction.OUTPUT)
+        self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.pin_gpio_machine_on_state)
+
+        self.tMCP.set_direction(self.pin_gpio_fan_power, Direction.OUTPUT)
+        self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_machine_on_state)
+
+        self.tMCP.set_direction(self.pin_gpio_door_switch, Direction.INPUT)
+        self.tMCP.set_direction(self.pin_gpio_side_button, Direction.INPUT)
+
+        self.tMCP.poll_pin(self.pin_gpio_door_switch, self.door_switch_callback, poll_rate = 0.1)
+        self.tMCP.poll_pin(self.pin_gpio_side_button, self.side_button_callback, poll_rate = 0.1)
 
 def __plugin_check__():
     # Make sure we only run our plugin if some_dependency is available

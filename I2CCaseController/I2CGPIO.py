@@ -39,9 +39,6 @@ class I2CGPIO(MCP23008):
         if(not callable(callback)):
             raise ValueError("Callback is not callable")
 
-        if(len(inspect.getfullargspec(callback).args) != 2):
-            raise ValueError("Callback must be of form callback(pin, state)")
-
         poll_thread = threading.Thread(target=self.thread_poll_pin, args=(pin, callback, poll_rate), daemon=True)
         self.poll_thread_executors[pin].clear()
         poll_thread.start()
@@ -84,7 +81,7 @@ if __name__ == '__main__':
         tMCP.set_pin_value(0, not value)
         print(pin, " ", value)
 
-    tMCP.poll_pin(2, pressed_callback, poll_rate = 0.1)
+    tMCP.poll_pin(3, pressed_callback, poll_rate = 0.1)
 
     while(1):
         tMCP.get_pin_value(3)
