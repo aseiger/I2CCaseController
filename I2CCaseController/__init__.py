@@ -70,6 +70,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
 
     def case_light_off(self, delay=0):
+        self.lightTimer.cancel()
         if(delay == 0):
             self.tPWM.ramp_channel(self.pin_pwm_light, 0, self.param_case_light_ramp_time)
             self.update_case_light_status("off")
@@ -80,7 +81,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("Case Light off %d", delay)
 
     def door_switch_callback(self, pin, value):
-        self._logger.info("Case Light %d", value)
+        self._logger.info("Door Switch %d", value)
 
         if(not self.lightTimer.is_alive()):
             if(value == True):
