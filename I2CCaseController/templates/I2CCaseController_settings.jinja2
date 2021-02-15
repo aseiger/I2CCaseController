@@ -43,5 +43,42 @@
         <div class="controls">
             <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_pwm_fan">
         </div>
+
+        <h4>{{ _('Servo Pins') }}</h4>
+        <label class="control-label">{{ _('Valve Servo Pin') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.pin_servo_vent_valve">
+        </div>
+
+        <h4>{{ _('Parameters') }}</h4>
+        <label class="control-label">{{ _('Light Brightness') }}</label>
+        <div class="controls">
+            <input type="number" min="0" max="1" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_case_light_brightness">
+        </div>
+
+        <label class="control-label">{{ _('Vent Fan Power') }}</label>
+        <div class="controls">
+            <input type="number" min="0" max="1" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_fan_power">
+        </div>
+
+        <label class="control-label">{{ _('Light Timeout') }}</label>
+        <div class="controls">
+            <input type="number" min="0" step="1" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_case_light_timeout">
+        </div>
+
+        <label class="control-label">{{ _('Light Ramp Time') }}</label>
+        <div class="controls">
+            <input type="number" min="0" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_case_light_ramp_time">
+        </div>
+
+        <label class="control-label">{{ _('Valve Open Angle') }}</label>
+        <div class="controls">
+            <input type="number" min="0" max="180" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_vent_valve_open">
+        </div>
+
+        <label class="control-label">{{ _('Valve Close Angle') }}</label>
+        <div class="controls">
+            <input type="number" min="0" max="180" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_vent_valve_closed">
+        </div>
     </div>
 </form>

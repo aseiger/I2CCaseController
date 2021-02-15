@@ -2,6 +2,10 @@
 	color: #00FF00 !important;
 }
 
+#navbar_plugin_I2CCaseController > a > i.on_timeout {
+	color: #CCCC00 !important;
+}
+
 #navbar_plugin_I2CCaseController > a > i.off {
 	color: #FF0000 !important;
 }

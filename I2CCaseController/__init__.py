@@ -59,13 +59,14 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def case_light_on(self, timeout=0):
         self.lightTimer.cancel()
         self.tPWM.ramp_channel(self.pin_pwm_light, self.param_case_light_brightness, self.param_case_light_ramp_time)
+        self.update_case_light_status("on")
         if(timeout > 0):
             self.lightTimer = threading.Timer(timeout, self.case_light_off)
             self.lightTimer.start()
+            self.update_case_light_status("on_timeout")
 
         self._logger.info("Case Light on %d", timeout)
 
-        self.update_case_light_status("on")
 
 
     def case_light_off(self, delay=0):
@@ -79,6 +80,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("Case Light off %d", delay)
 
     def door_switch_callback(self, pin, value):
+        self._logger.info("Case Light %d", value)
+
         if(not self.lightTimer.is_alive()):
             if(value == True):
                 self.case_light_on()
@@ -86,6 +89,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                 self.case_light_off()
 
     def side_button_callback(self, pin, value):
+        self._logger.info("Side Button %d", value)
+
         if(value == True):
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 self.case_light_on(timeout=self.param_case_light_timeout)
@@ -146,7 +151,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     @property
     def param_case_light_ramp_time(self):
-        return int(self._settings.get(["param_case_light_ramp_time"]))
+        return float(self._settings.get(["param_case_light_ramp_time"]))
 
     @property
     def param_case_light_brightness(self):
