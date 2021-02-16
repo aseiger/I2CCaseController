@@ -71,6 +71,12 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     def case_light_off(self, delay=0):
         self.lightTimer.cancel()
+
+        # if we try to turn the light off and the door is open, just cancel the timeout
+        if(self.tMCP.get_pin_value(self.pin_gpio_door_switch) == True):
+            self.update_case_light_status("on")
+            return
+
         if(delay == 0):
             self.tPWM.ramp_channel(self.pin_pwm_light, 0, self.param_case_light_ramp_time)
             self.update_case_light_status("off")
