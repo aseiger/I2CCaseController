@@ -184,7 +184,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         return dict(
             caseLightToggle=[],
             fanPowerToggle=[],
-            machinePowerToggle=[]
+            machinePowerToggle=[],
+            fanPowerSet=[],
+            valvePositionSet=[],
+            lightBrightnessSet=[]
         )
 
     def update_machine_power(self):
@@ -226,7 +229,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     def on_api_command(self, command, data):
         import flask
-        self._logger.info(command)
+        self._logger.info(data)
         if command == "caseLightToggle":
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 self.case_light_on(timeout=self.param_case_light_timeout)
@@ -247,6 +250,15 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             if(not self._printer.is_printing()):
                 self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.tMCP.get_pin_value(self.pin_gpio_machine_power))
                 self.update_machine_power()
+
+        elif command == "fanPowerSet":
+            self.tPWM.set_channel(self.pin_pwm_fan, float(data["fanPowerLevel"]))
+
+        elif command == "valvePositionSet":
+            self.tServo.set_channel(self.pin_servo_vent_valve, float(data["valvePosition"]))
+
+        elif command == "lightBrightnessSet":
+            self.tPWM.set_channel(self.pin_pwm_light, float(data["lightBrightness"]))
 
     def on_event(self, event, payload):
         if event == Events.CLIENT_OPENED:

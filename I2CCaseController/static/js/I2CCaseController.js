@@ -38,6 +38,96 @@ $(function() {
           }
         }
 
+        //for the fan power slider
+        var fanPowerSlider = document.getElementById("fanPowerSlider");
+        fanPowerSlider.oninput = function() {
+          console.log(this.value);
+          $.ajax({
+            url: API_BASEURL + "plugin/I2CCaseController",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify({
+              command: "fanPowerSet",
+              fanPowerLevel: this.value
+            }),
+            contentType: "application/json; charset=UTF-8",
+            error: function (data, status) {
+              var options = {
+                title: "Setting of Fan Power Failed!",
+                text: data.responseText,
+                hide: true,
+                buttons: {
+                  sticker: false,
+                  closer: true
+                },
+                type: "error"
+              };
+
+              new PNotify(options);
+            }
+          });
+        }
+
+        //for the valve position slider
+        var valvePositionSlider = document.getElementById("valvePositionSlider");
+        valvePositionSlider.oninput = function() {
+          console.log(this.value);
+          $.ajax({
+            url: API_BASEURL + "plugin/I2CCaseController",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify({
+              command: "valvePositionSet",
+              valvePosition: this.value
+            }),
+            contentType: "application/json; charset=UTF-8",
+            error: function (data, status) {
+              var options = {
+                title: "Setting of Valve Position Failed!",
+                text: data.responseText,
+                hide: true,
+                buttons: {
+                  sticker: false,
+                  closer: true
+                },
+                type: "error"
+              };
+
+              new PNotify(options);
+            }
+          });
+        }
+
+        //for the lighting level slider
+        var lightBrightnessSlider = document.getElementById("lightBrightnessSlider");
+        lightBrightnessSlider.oninput = function() {
+          console.log(this.value);
+          $.ajax({
+            url: API_BASEURL + "plugin/I2CCaseController",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify({
+              command: "lightBrightnessSet",
+              lightBrightness: this.value
+            }),
+            contentType: "application/json; charset=UTF-8",
+            error: function (data, status) {
+              var options = {
+                title: "Setting of Light Brightness Failed!",
+                text: data.responseText,
+                hide: true,
+                buttons: {
+                  sticker: false,
+                  closer: true
+                },
+                type: "error"
+              };
+
+              new PNotify(options);
+            }
+          });
+        }
+
         // called when the case light button is pressed
         self.caseLightCb = function() {
           $.ajax({
