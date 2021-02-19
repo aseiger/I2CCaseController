@@ -7,6 +7,9 @@ NUM_IO_PINS=16
 RAMP_DELAY=0.05
 
 class I2CServos(ServoKit):
+
+    channelRampThreads = [threading.Thread()] * NUM_IO_PINS
+
     def __init__(self):
         super().__init__(channels=16, address=0x40)
 
@@ -20,9 +23,10 @@ class I2CServos(ServoKit):
 
     def ramp_channel(self, pin, new_angle, ramp_time):
         self.validate_pin(pin)
-        tThread = threading.Thread(target=self.ramp_channel_thread, args=(pin, new_angle, ramp_time), daemon=True)
-        tThread.start()
-        return tThread
+        if(not self.channelRampThreads[pin].is_alive()):
+            self.channelRampThreads[pin] = threading.Thread(target=self.ramp_channel_thread, args=(pin, new_angle, ramp_time), daemon=True)
+            self.channelRampThreads[pin].start()
+        return self.channelRampThreads[pin]
 
     def ramp_channel_thread(self, pin, new_angle, ramp_time):
         current_angle = self.get_channel(pin)
@@ -30,10 +34,22 @@ class I2CServos(ServoKit):
         step_amount = (RAMP_DELAY * angle_to_go) / ramp_time
 
         while abs(angle_to_go) > abs(step_amount):
-            self.servo[pin].angle = current_angle + step_amount
+            hitBound = False
+            newAngle = current_angle + step_amount
+            if(newAngle < 0):
+                newAngle = 0
+                hitBound = True
+            if(newAngle > 180):
+                newAngle = 180
+                hitBound = True
+            
+            self.servo[pin].angle = newAngle
             current_angle = self.get_channel(pin)
             angle_to_go = new_angle - current_angle
-            time.sleep(RAMP_DELAY)
+            if(hitBound == True):
+                break
+            else:
+                time.sleep(RAMP_DELAY)
 
         self.servo[pin].angle = new_angle
 
@@ -50,7 +66,7 @@ if __name__ == '__main__':
     time.sleep(1)
 
     while(1):
-        tServo.ramp_channel(0, 180, 2)
-        time.sleep(3)
-        tServo.ramp_channel(0, 0, 2)
-        time.sleep(3)
+        tServo.ramp_channel(0, 180, 1)
+        time.sleep(0)
+        tServo.ramp_channel(0, 0, 1)
+        time.sleep(0)

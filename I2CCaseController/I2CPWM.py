@@ -9,6 +9,9 @@ MAX_CHANNEL_POWER=0xFFFF
 RAMP_DELAY=0.05
 
 class I2CPWM(adafruit_pca9685.PCA9685):
+
+    channelRampThreads = [threading.Thread()] * NUM_IO_PINS
+
     def __init__(self):
         i2c = busio.I2C(board.SCL, board.SDA)
         super().__init__(i2c, address=0x41)
@@ -27,9 +30,10 @@ class I2CPWM(adafruit_pca9685.PCA9685):
     def ramp_channel(self, pin, new_power, ramp_time):
         self.validate_pin(pin)
         self.validate_power(new_power)
-        tThread = threading.Thread(target=self.ramp_channel_thread, args=(pin, new_power, ramp_time), daemon=True)
-        tThread.start()
-        return tThread
+        if(not self.channelRampThreads[pin].is_alive()):
+            self.channelRampThreads[pin] = threading.Thread(target=self.ramp_channel_thread, args=(pin, new_power, ramp_time), daemon=True)
+            self.channelRampThreads[pin].start()
+        return self.channelRampThreads[pin]
 
     def ramp_channel_thread(self, pin, new_power, ramp_time):
         current_power = self.get_channel(pin)
@@ -42,10 +46,16 @@ class I2CPWM(adafruit_pca9685.PCA9685):
 
         if(steps_to_go < 0):
             step_amount = step_amount*-1
-            steps_to_go = steps_to_go*-1
 
         for i in range(current_power_raw, new_power_raw, step_amount):
-            self.channels[pin].duty_cycle = i
+            newDutyCycle = 0
+            if(i < 0):
+                newDutyCycle = 0
+            elif(i > MAX_CHANNEL_POWER):
+                newDutyCycle = MAX_CHANNEL_POWER
+            else:
+                newDutyCycle = i
+            self.channels[pin].duty_cycle = newDutyCycle
             time.sleep(RAMP_DELAY)
 
         self.channels[pin].duty_cycle = new_power_raw
@@ -70,7 +80,14 @@ if __name__ == '__main__':
     tPWM.set_channel(0, 0)
     tPWM.set_channel(1, 0)
     tPWM.set_channel(4, 0.4)
-    time.sleep(10)
+    time.sleep(1)
+
+    # while(1):
+    #     tPWM.ramp_channel(3, 1, 1)
+    #     time.sleep(0)
+
+    #     tPWM.ramp_channel(3, 0, 1)
+    #     time.sleep(0)
 
     while(1):
         currentVal = tPWM.get_channel(3)
