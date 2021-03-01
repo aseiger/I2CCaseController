@@ -53,12 +53,12 @@
         <h4>{{ _('Parameters') }}</h4>
         <label class="control-label">{{ _('Light Brightness') }}</label>
         <div class="controls">
-            <input type="number" min="0" max="1" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_case_light_brightness">
+            <input type="range" min="0" max="1" step="any" class="slider" id="lightBrightnessSlider" data-bind="value: settings.plugins.I2CCaseController.param_case_light_brightness">
         </div>
 
         <label class="control-label">{{ _('Vent Fan Power') }}</label>
         <div class="controls">
-            <input type="number" min="0" max="1" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_fan_power">
+            <input type="range" min="0" max="1" step="any" class="slider" id="fanPowerSlider" data-bind="value: settings.plugins.I2CCaseController.param_fan_power">
         </div>
 
         <label class="control-label">{{ _('Light Timeout') }}</label>
