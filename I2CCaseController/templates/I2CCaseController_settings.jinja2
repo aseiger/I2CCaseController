@@ -54,11 +54,13 @@
         <label class="control-label">{{ _('Light Brightness') }}</label>
         <div class="controls">
             <input type="range" min="0" max="1" step="any" class="slider" id="lightBrightnessSlider" data-bind="value: settings.plugins.I2CCaseController.param_case_light_brightness">
+            <h4> </h4>
         </div>
 
         <label class="control-label">{{ _('Vent Fan Power') }}</label>
         <div class="controls">
             <input type="range" min="0" max="1" step="any" class="slider" id="fanPowerSlider" data-bind="value: settings.plugins.I2CCaseController.param_fan_power">
+            <h4> </h4>
         </div>
 
         <label class="control-label">{{ _('Light Timeout') }}</label>
@@ -73,12 +75,14 @@
 
         <label class="control-label">{{ _('Valve Open Angle') }}</label>
         <div class="controls">
-            <input type="number" min="0" max="180" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_vent_valve_open">
+            <input type="range" min="0" max="180" step="any" class="slider" id="valveOpenPositionSlider" data-bind="value: settings.plugins.I2CCaseController.param_vent_valve_open">
+            <h4> </h4>
         </div>
 
         <label class="control-label">{{ _('Valve Close Angle') }}</label>
         <div class="controls">
-            <input type="number" min="0" max="180" step="any" class="input-mini" data-bind="value: settings.plugins.I2CCaseController.param_vent_valve_closed">
+            <input type="range" min="0" max="180" step="any" class="slider" id="valveClosedPositionSlider" data-bind="value: settings.plugins.I2CCaseController.param_vent_valve_closed">
+            <h4> </h4>
         </div>
     </div>
 </form>

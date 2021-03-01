@@ -69,8 +69,37 @@ $(function() {
         }
 
         //for the valve position slider
-        var valvePositionSlider = document.getElementById("valvePositionSlider");
-        valvePositionSlider.oninput = function() {
+        var valveOpenPositionSlider = document.getElementById("valveOpenPositionSlider");
+        valveOpenPositionSlider.oninput = function() {
+          console.log(this.value);
+          $.ajax({
+            url: API_BASEURL + "plugin/I2CCaseController",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify({
+              command: "valvePositionSet",
+              valvePosition: this.value
+            }),
+            contentType: "application/json; charset=UTF-8",
+            error: function (data, status) {
+              var options = {
+                title: "Setting of Valve Position Failed!",
+                text: data.responseText,
+                hide: true,
+                buttons: {
+                  sticker: false,
+                  closer: true
+                },
+                type: "error"
+              };
+
+              new PNotify(options);
+            }
+          });
+        }
+
+        var valveClosedPositionSlider = document.getElementById("valveClosedPositionSlider");
+        valveClosedPositionSlider.oninput = function() {
           console.log(this.value);
           $.ajax({
             url: API_BASEURL + "plugin/I2CCaseController",
