@@ -31,6 +31,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     tServo = I2CServos.I2CServos()
 
     lightTimer = threading.Timer(0, 0)
+
+    lightOnReason = "none"
 	##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
@@ -70,6 +72,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
 
     def case_light_off(self, delay=0):
+        self.lightOnReason = "none"
         self.lightTimer.cancel()
 
         # if we try to turn the light off and the door is open, just cancel the timeout
@@ -91,18 +94,24 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
         if(not self.lightTimer.is_alive()):
             if(value == True):
-                self.case_light_on()
+                if(not self.lightOnReason == "tabSelect"):
+                    self.case_light_on()
+                    self.lightOnReason = "door"
             else:
-                self.case_light_off()
+                if(not self.lightOnReason == "tabSelect"):
+                    self.case_light_off()
 
     def side_button_callback(self, pin, value):
         self._logger.info("Side Button %d", value)
 
         if(value == True):
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
-                self.case_light_on(timeout=self.param_case_light_timeout)
+                if(not self.lightOnReason == "tabSelect"):
+                    self.case_light_on(timeout=self.param_case_light_timeout)
+                    self.lightOnReason = "switch"
             else:
-                self.case_light_off()
+                if(not self.lightOnReason == "tabSelect"):
+                    self.case_light_off()
 
     @property
     def pwm_addr(self):
@@ -187,7 +196,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             machinePowerToggle=[],
             fanPowerSet=[],
             valvePositionSet=[],
-            lightBrightnessSet=[]
+            lightBrightnessSet=[],
+            caseLightOn=[],
+            caseLightOff=[]
         )
 
     def update_machine_power(self):
@@ -229,10 +240,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     def on_api_command(self, command, data):
         import flask
-        self._logger.info(data)
         if command == "caseLightToggle":
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 self.case_light_on(timeout=self.param_case_light_timeout)
+                self.lightOnReason = "toggle"
             else:
                 self.case_light_off()
         elif command == "fanPowerToggle":
@@ -260,11 +271,22 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif command == "lightBrightnessSet":
             self.tPWM.set_channel(self.pin_pwm_light, float(data["lightBrightness"]))
 
+        elif command == "caseLightOn":
+            self.case_light_on()
+            self.lightOnReason = "tabSelect"
+
+        elif command == "caseLightOff":
+            if(self.lightOnReason == "tabSelect"):
+                self.case_light_off()
+
     def on_event(self, event, payload):
         if event == Events.CLIENT_OPENED:
             self.update_fan_power()
             self.update_machine_power()
             self.update_case_light_status()
+        elif event == Events.CLIENT_CLOSED:
+            if(self.lightOnReason == "tabSelect"):
+                self.case_light_off()
 
     # def get_template_vars(self):
     #     return dict(
@@ -277,7 +299,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def get_template_configs(self):
         return [
             dict(type="navbar", custom_bindings=True),
-            dict(type="settings", custom_bindings=False)
+            dict(type="settings", custom_bindings=True)
         ]
 
 	##~~ AssetPlugin mixin
@@ -286,7 +308,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 		# Define your plugin's asset files to automatically include in the
 		# core UI here.
         return dict(
-            js=["js/I2CCaseController.js"],
+            js=["js/I2CCaseControllerNavbarViewModel.js", "js/I2CCaseControllerSettingsViewModel.js"],
             css=["css/I2CCaseController.css"],
             less=["less/I2CCaseController.less"]
         )

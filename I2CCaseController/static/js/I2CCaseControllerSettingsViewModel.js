@@ -5,43 +5,26 @@
  * License: AGPLv3
  */
 $(function() {
-    function I2ccasecontrollerViewModel(parameters) {
+    function I2CcaseControllerSettingsViewModel(parameters) {
         var self = this;
-
-        self.NavigationViewModel = parameters[0];
 
         // assign the injected parameters, e.g.:
         // self.loginStateViewModel = parameters[0];
-        // self.settingsViewModel = parameters[1];
+        self.settings = parameters[0];
+        self.i2CCaseControllerNavbarViewModel = parameters[1];
+        
+        self.onSettingsShown = function() {
+            console.log("settings shown!");
+            console.log(self.i2CCaseControllerNavbarViewModel);
+        }
 
-        self.machinePowerState = ko.observable('unknown');
-        self.fanPowerState = ko.observable('unknown');
-        self.caselightState = ko.observable('unknown');
-
-        self.onDataUpdaterPluginMessage = function(plugin, data) {
-          if (plugin != "I2CCaseController") {
-            return;
-          }
-
-          console.log(data.msgType)
-
-          if (data.msgType == "caseLightState") {
-            self.caselightState(data.value);
-          }
-
-          if (data.msgType == "fanPowerState") {
-            self.fanPowerState(data.value);
-          }
-
-          if (data.msgType == "machinePowerState") {
-            self.machinePowerState(data.value);
-          }
+        self.onSettingsHidden = function() {
+            console.log("settings hidden!")
         }
 
         //for the fan power slider
         var fanPowerSlider = document.getElementById("fanPowerSlider");
         fanPowerSlider.oninput = function() {
-          console.log(this.value);
           $.ajax({
             url: API_BASEURL + "plugin/I2CCaseController",
             type: "POST",
@@ -71,7 +54,6 @@ $(function() {
         //for the valve position slider
         var valveOpenPositionSlider = document.getElementById("valveOpenPositionSlider");
         valveOpenPositionSlider.oninput = function() {
-          console.log(this.value);
           $.ajax({
             url: API_BASEURL + "plugin/I2CCaseController",
             type: "POST",
@@ -100,7 +82,6 @@ $(function() {
 
         var valveClosedPositionSlider = document.getElementById("valveClosedPositionSlider");
         valveClosedPositionSlider.oninput = function() {
-          console.log(this.value);
           $.ajax({
             url: API_BASEURL + "plugin/I2CCaseController",
             type: "POST",
@@ -130,7 +111,6 @@ $(function() {
         //for the lighting level slider
         var lightBrightnessSlider = document.getElementById("lightBrightnessSlider");
         lightBrightnessSlider.oninput = function() {
-          console.log(this.value);
           $.ajax({
             url: API_BASEURL + "plugin/I2CCaseController",
             type: "POST",
@@ -156,85 +136,6 @@ $(function() {
             }
           });
         }
-
-        // called when the case light button is pressed
-        self.caseLightCb = function() {
-          $.ajax({
-            url: API_BASEURL + "plugin/I2CCaseController",
-            type: "POST",
-            dataType: "json",
-            data: JSON.stringify({
-              command: "caseLightToggle"
-            }),
-            contentType: "application/json; charset=UTF-8",
-            error: function (data, status) {
-              var options = {
-                title: "Case Light On Failed.",
-                text: data.responseText,
-                hide: true,
-                buttons: {
-                  sticker: false,
-                  closer: true
-                },
-                type: "error"
-              };
-
-              new PNotify(options);
-            }
-          });
-        }
-
-        self.machinePowerCb = function() {
-          $.ajax({
-            url: API_BASEURL + "plugin/I2CCaseController",
-            type: "POST",
-            dataType: "json",
-            data: JSON.stringify({
-              command: "machinePowerToggle"
-            }),
-            contentType: "application/json; charset=UTF-8",
-            error: function (data, status) {
-              var options = {
-                title: "Case Light On Failed.",
-                text: data.responseText,
-                hide: true,
-                buttons: {
-                  sticker: false,
-                  closer: true
-                },
-                type: "error"
-              };
-
-              new PNotify(options);
-            }
-          });
-        }
-
-        self.fanPowerCb = function() {
-          $.ajax({
-            url: API_BASEURL + "plugin/I2CCaseController",
-            type: "POST",
-            dataType: "json",
-            data: JSON.stringify({
-              command: "fanPowerToggle"
-            }),
-            contentType: "application/json; charset=UTF-8",
-            error: function (data, status) {
-              var options = {
-                title: "Case Light On Failed.",
-                text: data.responseText,
-                hide: true,
-                buttons: {
-                  sticker: false,
-                  closer: true
-                },
-                type: "error"
-              };
-
-              new PNotify(options);
-            }
-          });
-        }
     }
 
     /* view model class, parameters for constructor, container to bind to
@@ -242,10 +143,10 @@ $(function() {
      * and a full list of the available options.
      */
     OCTOPRINT_VIEWMODELS.push({
-        construct: I2ccasecontrollerViewModel,
+        construct: I2CcaseControllerSettingsViewModel,
         // ViewModels your plugin depends on, e.g. loginStateViewModel, settingsViewModel, ...
-        dependencies: ['navigationViewModel'],
+        dependencies: ['settingsViewModel', 'i2CcaseControllerNavbarViewModel'],
         // Elements to bind to, e.g. #settings_plugin_I2CCaseController, #tab_plugin_I2CCaseController, ...
-        elements: ['#navbar_plugin_I2CCaseController', '#tab_plugin_I2CCaseController']
+        elements: ['#settings_plugin_I2CCaseController']
     });
 });
