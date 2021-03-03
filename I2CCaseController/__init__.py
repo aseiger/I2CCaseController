@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from . import I2CGPIO
 from . import I2CPWM
 from . import I2CServos
+from . import DS18B20
 from digitalio import Direction
 import time
 import threading
@@ -32,6 +33,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     lightTimer = threading.Timer(0, 0)
 
+    tempDataPushTimer = threading.Timer(0, 0)
+
     lightOnReason = "none"
 	##~~ SettingsPlugin mixin
 
@@ -55,7 +58,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             param_fan_power="0.4",
             pin_servo_vent_valve="0",
             param_vent_valve_open="90",
-            param_vent_valve_closed="180"
+            param_vent_valve_closed="180",
+            param_temp_display_update_rate="2"
         )
 
     def case_light_on(self, timeout=0):
@@ -66,10 +70,6 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.lightTimer = threading.Timer(timeout, self.case_light_off)
             self.lightTimer.start()
             self.update_case_light_status("on_timeout")
-
-        self._logger.info("Case Light on %d", timeout)
-
-
 
     def case_light_off(self, delay=0):
         self.lightOnReason = "none"
@@ -87,11 +87,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.lightTimer = threading.Timer(delay, self.case_light_off)
             self.lightTimer.start()
 
-        self._logger.info("Case Light off %d", delay)
-
     def door_switch_callback(self, pin, value):
-        self._logger.info("Door Switch %d", value)
-
         if(not self.lightTimer.is_alive()):
             if(value == True):
                 if(not self.lightOnReason == "tabSelect"):
@@ -102,8 +98,6 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                     self.case_light_off()
 
     def side_button_callback(self, pin, value):
-        self._logger.info("Side Button %d", value)
-
         if(value == True):
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 if(not self.lightOnReason == "tabSelect"):
@@ -112,6 +106,24 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             else:
                 if(not self.lightOnReason == "tabSelect"):
                     self.case_light_off()
+
+    def send_temp_update(self):
+        self.DS18B20_Sensors = DS18B20.enumerate_DS18B20_sensors()
+        for sensor in self.DS18B20_Sensors:
+            self._plugin_manager.send_plugin_message(self._identifier,
+                                            dict(
+                                                msgType="tempUpdate",
+                                                sensorAlias=sensor.alias,
+                                                value=sensor.temperature))
+
+        self.tempDataPushTimer = threading.Timer(self.param_temp_display_update_rate, self.send_temp_update)
+        self.tempDataPushTimer.daemon = True
+        self.tempDataPushTimer.start()
+
+        # self._plugin_manager.send_plugin_message(self._identifier,
+        #                                     dict(
+        #                                         msgType="machinePowerState",
+        #                                         value=stateStr))
 
     @property
     def pwm_addr(self):
@@ -188,6 +200,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     @property
     def param_vent_valve_closed(self):
         return float(self._settings.get(["param_vent_valve_closed"]))
+
+    @property
+    def param_temp_display_update_rate(self):
+        return float(self._settings.get(["param_temp_display_update_rate"]))
 
     def get_api_commands(self):
         return dict(
@@ -299,7 +315,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def get_template_configs(self):
         return [
             dict(type="navbar", custom_bindings=True),
-            dict(type="settings", custom_bindings=True)
+            dict(type="settings", custom_bindings=True),
+            dict(type="tab", custom_bindings=True)
         ]
 
 	##~~ AssetPlugin mixin
@@ -308,7 +325,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 		# Define your plugin's asset files to automatically include in the
 		# core UI here.
         return dict(
-            js=["js/I2CCaseControllerNavbarViewModel.js", "js/I2CCaseControllerSettingsViewModel.js"],
+            js=["js/I2CCaseControllerNavbarViewModel.js", "js/I2CCaseControllerSettingsViewModel.js", "js/I2CCaseControllerTabViewModel.js"],
             css=["css/I2CCaseController.css"],
             less=["less/I2CCaseController.less"]
         )
@@ -370,6 +387,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self.tMCP.poll_pin(self.pin_gpio_side_button, self.side_button_callback, poll_rate = 0.1)
 
         self.tServo.set_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed)
+
+        self.tempDataPushTimer = threading.Timer(self.param_temp_display_update_rate, self.send_temp_update)
+        self.tempDataPushTimer.daemon = True
+        self.tempDataPushTimer.start()
 
 def __plugin_check__():
     # Make sure we only run our plugin if some_dependency is available

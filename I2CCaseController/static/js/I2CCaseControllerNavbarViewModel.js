@@ -78,8 +78,6 @@ $(function() {
             return;
           }
 
-          console.log(data.msgType)
-
           if (data.msgType == "caseLightState") {
             self.caselightState(data.value);
           }
