@@ -20,6 +20,7 @@ $(function() {
         self.XTemp = ko.observable();
         self.Z_L_Temp = ko.observable();
         self.Z_R_Temp = ko.observable();
+        self.PSUTemp = ko.observable();
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
           if (plugin != "I2CCaseController") {
@@ -31,19 +32,22 @@ $(function() {
                 self.caseTemp("Case: " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.6") {
-                self.YTemp("Y Motor: " + data.value + " °C");
+                self.Z_L_Temp("Z Left Motor: " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.5") {
-                self.ETemp("E Motor: " + data.value + " °C");
+                self.Z_R_Temp("Z Right Motor: " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.4") {
-              self.XTemp("X Motor: " + data.value + " °C");
+              self.YTemp("Y Motor: " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.3") {
-              self.Z_L_Temp("Z Left Motor: " + data.value + " °C");
+              self.XTemp("X Motor: " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.2") {
-              self.Z_R_Temp("Z Right Motor: " + data.value + " °C");
+              self.ETemp("E Motor: " + data.value + " °C");
+            }
+            if (data.sensorAlias == "bus.1") {
+              self.PSUTemp("24V PSU: " + data.value + " °C");
             }
           }
         }
