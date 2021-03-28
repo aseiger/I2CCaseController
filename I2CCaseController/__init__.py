@@ -50,6 +50,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             pin_gpio_fan_power_on_state="0",
             pin_pwm_fan="4",
             pin_pwm_light="3",
+            pin_pwm_machine_fan="2",
             pin_gpio_door_switch="2",
             pin_gpio_side_button="3",
             param_case_light_timeout="60",
@@ -166,6 +167,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         return int(self._settings.get(["pin_pwm_light"]))
 
     @property
+    def pin_pwm_machine_fan(self):
+        return int(self._settings.get(["pin_pwm_machine_fan"]))
+
+    @property
     def pin_gpio_door_switch(self):
         return int(self._settings.get(["pin_gpio_door_switch"]))
 
@@ -235,6 +240,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             stateStr = "on"
         else:
             stateStr = "off"
+            self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
 
         self._plugin_manager.send_plugin_message(self._identifier,
                                                  dict(
@@ -276,6 +282,12 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif command == "machinePowerToggle":
             if(not self._printer.is_printing()):
                 self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.tMCP.get_pin_value(self.pin_gpio_machine_power))
+
+                if(self.tMCP.get_pin_value(self.pin_gpio_machine_power) == self.pin_gpio_machine_on_state):
+                    self.tPWM.set_channel(self.pin_pwm_machine_fan, 1.0)
+                else:
+                    self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
+
                 self.update_machine_power()
 
         elif command == "fanPowerSet":
@@ -365,14 +377,16 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("Fan Power GPIO Pin: %s", self._settings.get(["pin_gpio_fan_power"]))
         self._logger.info("Fan PWM Pin: %s", self._settings.get(["pin_pwm_fan"])),
         self._logger.info("Light PWM Pin: %s", self._settings.get(["pin_pwm_light"]))
+        self._logger.info("Machine Fan PWM Pin: %s", self._settings.get(["pin_pwm_machine_fan"]))
         self._logger.info("Door Switch GPIO Pin: %s", self._settings.get(["pin_gpio_door_switch"]))
         self._logger.info("Side Button GPIO Pin: %s", self._settings.get(["pin_gpio_side_button"]))
 
         self._logger.info("Machine GPIO On State: %s", self.pin_gpio_machine_on_state)
-        self._logger.info("Machine GPIO On State: %s", self.pin_gpio_fan_power_on_state)
+        self._logger.info("Fan Power GPIO On State: %s", self.pin_gpio_fan_power_on_state)
 
         self.tPWM.set_channel(self.pin_pwm_light, 0)
         self.tPWM.set_channel(self.pin_pwm_fan, 0)
+        self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
 
         self.tMCP.set_direction(self.pin_gpio_machine_power, Direction.OUTPUT)
         self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.pin_gpio_machine_on_state)
