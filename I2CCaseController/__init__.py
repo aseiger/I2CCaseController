@@ -351,6 +351,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif event == Events.DISCONNECTED:
             self._logger.info("DISCONNECTED")
         elif event == Events.PRINT_STARTED:
+            self.tMCP.set_pin_value(self.pin_gpio_fan_power, self.pin_gpio_fan_power_on_state)
             self.tPWM.set_channel(self.pin_pwm_fan, self.param_fan_power)
             self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, 2)
             self.update_fan_power()
@@ -358,6 +359,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.machinePowerDownTimer.cancel()
 
         elif event == Events.PRINT_DONE:
+            self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
             self.tPWM.set_channel(self.pin_pwm_fan, 0)
             self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, 2)
             self.update_fan_power()
