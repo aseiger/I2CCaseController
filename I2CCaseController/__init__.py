@@ -35,6 +35,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     tempDataPushTimer = threading.Timer(0, 0)
 
+    machineConnectTimer = threading.Timer(0, 0)
+    machinePowerDownTimer = threading.Timer(0, 0)
+
     lightOnReason = "none"
 	##~~ SettingsPlugin mixin
 
@@ -60,8 +63,35 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             pin_servo_vent_valve="0",
             param_vent_valve_open="90",
             param_vent_valve_closed="180",
-            param_temp_display_update_rate="2"
+            param_temp_display_update_rate="2",
+            machine_connect_disconnect_after_power="true",
+            machine_power_connect_delay="5",
+            printer_shutdown_time_delay="300"
         )
+
+    def machine_on(self):
+        self.tMCP.set_pin_value(self.pin_gpio_machine_power, self.pin_gpio_machine_on_state)
+
+        self.tPWM.set_channel(self.pin_pwm_machine_fan, 1.0)
+
+        if self.machine_connect_disconnect_after_power:
+            self.machineConnectTimer = threading.Timer(self.machine_power_connect_delay, self._printer.connect)
+            self.machineConnectTimer.start()
+
+        self.update_machine_power()
+
+    def machine_off(self):
+        if(not self._printer.is_printing()):
+
+            self.machineConnectTimer.cancel()
+
+            if self.machine_connect_disconnect_after_power:
+                self._printer.disconnect()
+
+            self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.pin_gpio_machine_on_state)
+            self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
+
+            self.update_machine_power()
 
     def case_light_on(self, timeout=0):
         self.lightTimer.cancel()
@@ -120,11 +150,6 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self.tempDataPushTimer = threading.Timer(self.param_temp_display_update_rate, self.send_temp_update)
         self.tempDataPushTimer.daemon = True
         self.tempDataPushTimer.start()
-
-        # self._plugin_manager.send_plugin_message(self._identifier,
-        #                                     dict(
-        #                                         msgType="machinePowerState",
-        #                                         value=stateStr))
 
     @property
     def pwm_addr(self):
@@ -210,6 +235,18 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def param_temp_display_update_rate(self):
         return float(self._settings.get(["param_temp_display_update_rate"]))
 
+    @property
+    def machine_power_connect_delay(self):
+        return float(self._settings.get(["machine_power_connect_delay"]))
+
+    @property
+    def machine_connect_disconnect_after_power(self):
+        return bool(self._settings.get(["machine_connect_disconnect_after_power"]))
+
+    @property
+    def printer_shutdown_time_delay(self):
+        return float(self._settings.get(["printer_shutdown_time_delay"]))
+
     def get_api_commands(self):
         return dict(
             caseLightToggle=[],
@@ -280,15 +317,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.update_fan_power()
 
         elif command == "machinePowerToggle":
-            if(not self._printer.is_printing()):
-                self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.tMCP.get_pin_value(self.pin_gpio_machine_power))
-
-                if(self.tMCP.get_pin_value(self.pin_gpio_machine_power) == self.pin_gpio_machine_on_state):
-                    self.tPWM.set_channel(self.pin_pwm_machine_fan, 1.0)
-                else:
-                    self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
-
-                self.update_machine_power()
+            self._logger.info("Machine Power Toggle")
+            if(self.tMCP.get_pin_value(self.pin_gpio_machine_power) == self.pin_gpio_machine_on_state):
+                self.machine_off()
+            else:
+                self.machine_on()
 
         elif command == "fanPowerSet":
             self.tPWM.set_channel(self.pin_pwm_fan, float(data["fanPowerLevel"]))
@@ -315,6 +348,21 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif event == Events.CLIENT_CLOSED:
             if(self.lightOnReason == "tabSelect"):
                 self.case_light_off()
+        elif event == Events.DISCONNECTED:
+            self._logger.info("DISCONNECTED")
+        elif event == Events.PRINT_STARTED:
+            self.tPWM.set_channel(self.pin_pwm_fan, self.param_fan_power)
+            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, 2)
+            self.update_fan_power()
+
+            self.machinePowerDownTimer.cancel()
+
+        elif event == Events.PRINT_DONE:
+            self.tPWM.set_channel(self.pin_pwm_fan, 0)
+            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, 2)
+            self.update_fan_power()
+
+            self.machinePowerDownTimer = threading.timer(self.printer_shutdown_time_delay, self.machine_off)
 
     # def get_template_vars(self):
     #     return dict(
@@ -442,5 +490,5 @@ def __plugin_load__():
 
 	global __plugin_hooks__
 	__plugin_hooks__ = {
-		"octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
+		"octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
 	}
