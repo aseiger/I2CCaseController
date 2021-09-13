@@ -41,9 +41,9 @@ class I2CServos(ServoKit):
             if(newAngle > 180):
                 newAngle = 180
                 hitBound = True
-            
+                
             self.servo[pin].angle = newAngle
-            current_angle = self.get_channel(pin)
+            current_angle = newAngle
             angle_to_go = new_angle - current_angle
             if(hitBound == True):
                 break

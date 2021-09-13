@@ -88,5 +88,31 @@
             <input type="range" min="0" max="180" step="any" class="slider" id="valveClosedPositionSlider" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_closed">
             <h4> </h4>
         </div>
+
+        <label class="control-label">{{ _('Valve Actuation Time') }}</label>
+        <div class="controls">
+            <input type="number" min="0.1" step="any" class="input-mini" id="valveClosedPositionSlider" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_actuation_time">
+        </div>
+
+        <label class="control-label">{{ _('Temp Update Delay') }}</label>
+        <div class="controls">
+            <input type="number" min="2" max="30" step="any" class="input-mini" id="temperatureDisplayUpdateRateDelay" data-bind="value: settings.settings.plugins.I2CCaseController.param_temp_display_update_rate">
+        </div>
+
+        <label class="control-label">{{ _('') }}</label>
+        <div class="controls">
+            <input type="checkbox" id="automaticMachineConnectDisconnectCheckBox" data-bind="checked: settings.settings.plugins.I2CCaseController.machine_connect_disconnect_after_power">
+            <label>Connect, disconnect, and powerdown Machine</label>
+        </div>
+
+        <label class="control-label">{{ _('Power-On Connect Delay') }}</label>
+        <div class="controls">
+            <input type="number" min="0" step="any" class="input-mini" id="machinePowerOnDelay" data-bind="value: settings.settings.plugins.I2CCaseController.machine_power_connect_delay">
+        </div>
+
+        <label class="control-label">{{ _('Machine Shutdown Delay') }}</label>
+        <div class="controls">
+            <input type="number" min="0" step="any" class="input-mini" id="machineShutdownDelayNumber" data-bind="value: settings.settings.plugins.I2CCaseController.printer_shutdown_time_delay">
+        </div>
     </div>
 </form>

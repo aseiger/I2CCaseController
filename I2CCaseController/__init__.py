@@ -9,14 +9,6 @@ import time
 import threading
 from octoprint.events import Events
 
-### (Don't forget to remove me)
-# This is a basic skeleton for your plugin's __init__.py. You probably want to adjust the class name of your plugin
-# as well as the plugin mixins it's subclassing from. This is really just a basic skeleton to get you started,
-# defining your plugin as a template plugin, settings and asset plugin. Feel free to add or remove mixins
-# as necessary.
-#
-# Take a look at the documentation on what other plugin mixins are available.
-
 import octoprint.plugin
 
 class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
@@ -39,8 +31,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     machinePowerDownTimer = threading.Timer(0, 0)
 
     lightOnReason = "none"
-	##~~ SettingsPlugin mixin
 
+	##~~ SettingsPlugin mixin
     def get_settings_defaults(self):
         return dict(
 			pwm_addr="0x41",
@@ -63,6 +55,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             pin_servo_vent_valve="0",
             param_vent_valve_open="90",
             param_vent_valve_closed="180",
+            param_vent_valve_actuation_time="2",
             param_temp_display_update_rate="2",
             machine_connect_disconnect_after_power="true",
             machine_power_connect_delay="5",
@@ -92,6 +85,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
 
             self.update_machine_power()
+        else:
+            self._logger.info("Machine Off canceled - printer is printing!")
 
     def case_light_on(self, timeout=0):
         self.lightTimer.cancel()
@@ -139,13 +134,16 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                     self.case_light_off()
 
     def send_temp_update(self):
-        self.DS18B20_Sensors = DS18B20.enumerate_DS18B20_sensors()
-        for sensor in self.DS18B20_Sensors:
-            self._plugin_manager.send_plugin_message(self._identifier,
-                                            dict(
-                                                msgType="tempUpdate",
-                                                sensorAlias=sensor.alias,
-                                                value=sensor.temperature))
+        try:
+            self.DS18B20_Sensors = DS18B20.enumerate_DS18B20_sensors()
+            for sensor in self.DS18B20_Sensors:
+                self._plugin_manager.send_plugin_message(self._identifier,
+                                                dict(
+                                                    msgType="tempUpdate",
+                                                    sensorAlias=sensor.alias,
+                                                    value=sensor.temperature))
+        except Exception as err:
+            self._logger.error("send_temp_update reported {0}".format(err))
 
         self.tempDataPushTimer = threading.Timer(self.param_temp_display_update_rate, self.send_temp_update)
         self.tempDataPushTimer.daemon = True
@@ -232,6 +230,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         return float(self._settings.get(["param_vent_valve_closed"]))
 
     @property
+    def param_vent_valve_actuation_time(self):
+        return float(self._settings.get(["param_vent_valve_actuation_time"]))
+
+    @property
     def param_temp_display_update_rate(self):
         return float(self._settings.get(["param_temp_display_update_rate"]))
 
@@ -309,10 +311,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.tMCP.get_pin_value(self.pin_gpio_fan_power))
             if(self.tMCP.get_pin_value(self.pin_gpio_fan_power) == self.pin_gpio_fan_power_on_state):
                 self.tPWM.set_channel(self.pin_pwm_fan, self.param_fan_power)
-                self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, 2)
+                self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, self.param_vent_valve_actuation_time)
             else:
                 self.tPWM.set_channel(self.pin_pwm_fan, 0)
-                self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, 2)
+                self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, self.param_vent_valve_actuation_time)
 
             self.update_fan_power()
 
@@ -353,7 +355,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif event == Events.PRINT_STARTED:
             self.tMCP.set_pin_value(self.pin_gpio_fan_power, self.pin_gpio_fan_power_on_state)
             self.tPWM.set_channel(self.pin_pwm_fan, self.param_fan_power)
-            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, 2)
+            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, self.param_vent_valve_actuation_time)
             self.update_fan_power()
 
             self.machinePowerDownTimer.cancel()
@@ -361,10 +363,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif event == Events.PRINT_DONE:
             self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
             self.tPWM.set_channel(self.pin_pwm_fan, 0)
-            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, 2)
+            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, self.param_vent_valve_actuation_time)
             self.update_fan_power()
 
-            self.machinePowerDownTimer = threading.timer(self.printer_shutdown_time_delay, self.machine_off)
+            self.machinePowerDownTimer = threading.Timer(self.printer_shutdown_time_delay, self.machine_off)
+            self.machinePowerDownTimer.start()
 
     # def get_template_vars(self):
     #     return dict(
@@ -456,6 +459,18 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self.tempDataPushTimer.daemon = True
         self.tempDataPushTimer.start()
 
+    ## ~~Timelapse hooks
+    def timelapse_capture_pre(self, filename):
+        self.tPWM.set_channel(self.pin_pwm_light, 1)
+        time.sleep(2)
+
+    def timelapse_capture_post(self, filename, success):
+        self._logger.info(self.lightOnReason)
+        if (self.lightOnReason == "none"):
+            self.tPWM.set_channel(self.pin_pwm_light, 0)
+        else:
+            self.tPWM.set_channel(self.pin_pwm_light, self.param_case_light_brightness)
+
 def __plugin_check__():
     # Make sure we only run our plugin if some_dependency is available
     try:
@@ -493,4 +508,6 @@ def __plugin_load__():
 	global __plugin_hooks__
 	__plugin_hooks__ = {
 		"octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
-	}
+        "octoprint.timelapse.capture.pre": __plugin_implementation__.timelapse_capture_pre,
+        "octoprint.timelapse.capture.post": __plugin_implementation__.timelapse_capture_post
+        }
