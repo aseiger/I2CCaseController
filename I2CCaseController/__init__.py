@@ -32,6 +32,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     lightOnReason = "none"
 
+    def __init__(self):
+        self.mqtt_publish = lambda *args, **kwargs: None
+        self.mqtt_subscribe = lambda *args, **kwargs: None
+        self.mqtt_unsubscribe = lambda *args, **kwargs: None
+
 	##~~ SettingsPlugin mixin
     def get_settings_defaults(self):
         return dict(
@@ -59,8 +64,27 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             param_temp_display_update_rate="2",
             machine_connect_disconnect_after_power="true",
             machine_power_connect_delay="5",
-            printer_shutdown_time_delay="300"
+            printer_shutdown_time_delay="300",
+            ds18b20_bus0_alias="",
+            ds18b20_bus1_alias="",
+            ds18b20_bus2_alias="",
+            ds18b20_bus3_alias="",
+            ds18b20_bus4_alias="",
+            ds18b20_bus5_alias="",
+            ds18b20_bus6_alias="",
+            ds18b20_bus7_alias=""
         )
+
+    def onewire_bus_to_alias(self, bus):
+        alias_map = {"bus.0": self._settings.get(["ds18b20_bus0_alias"]),
+                    "bus.1": self._settings.get(["ds18b20_bus1_alias"]),
+                    "bus.2": self._settings.get(["ds18b20_bus2_alias"]),
+                    "bus.3": self._settings.get(["ds18b20_bus3_alias"]),
+                    "bus.4": self._settings.get(["ds18b20_bus4_alias"]),
+                    "bus.5": self._settings.get(["ds18b20_bus5_alias"]),
+                    "bus.6": self._settings.get(["ds18b20_bus6_alias"]),
+                    "bus.7": self._settings.get(["ds18b20_bus7_alias"])}
+        return alias_map[bus]
 
     def machine_on(self):
         self.tMCP.set_pin_value(self.pin_gpio_machine_power, self.pin_gpio_machine_on_state)
@@ -141,7 +165,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                                                 dict(
                                                     msgType="tempUpdate",
                                                     sensorAlias=sensor.alias,
+                                                    sensorName=self.onewire_bus_to_alias(sensor.alias),
                                                     value=sensor.temperature))
+                mqtt_topic = ''.join((filter(str.isalnum, self.onewire_bus_to_alias(sensor.alias))))
+                self.mqtt_publish("octoPrint/i2ccasecontroller/" + mqtt_topic, sensor.temperature)
+
         except Exception as err:
             self._logger.error("send_temp_update reported {0}".format(err))
 
@@ -436,6 +464,15 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
         self._logger.info("Machine GPIO On State: %s", self.pin_gpio_machine_on_state)
         self._logger.info("Fan Power GPIO On State: %s", self.pin_gpio_fan_power_on_state)
+
+        helpers = self._plugin_manager.get_helpers("mqtt", "mqtt_publish", "mqtt_subscribe", "mqtt_unsubscribe")
+        if helpers:
+            if "mqtt_publish" in helpers:
+                self.mqtt_publish = helpers["mqtt_publish"]
+            if "mqtt_subscribe" in helpers:
+                self.mqtt_subscribe = helpers["mqtt_subscribe"]
+            if "mqtt_unsubscribe" in helpers:
+                self.mqtt_unsubscribe = helpers["mqtt_unsubscribe"]
 
         self.tPWM.set_channel(self.pin_pwm_light, 0)
         self.tPWM.set_channel(self.pin_pwm_fan, 0)

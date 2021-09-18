@@ -14,13 +14,14 @@ $(function() {
         // self.loginStateViewModel = parameters[0];
         // self.settingsViewModel = parameters[1];
 
-        self.caseTemp = ko.observable();
-        self.YTemp = ko.observable();
-        self.ETemp = ko.observable();
-        self.XTemp = ko.observable();
-        self.Z_L_Temp = ko.observable();
-        self.Z_R_Temp = ko.observable();
-        self.PSUTemp = ko.observable();
+        self.auxtemp7 = ko.observable();
+        self.auxtemp6 = ko.observable();
+        self.auxtemp5 = ko.observable();
+        self.auxtemp4 = ko.observable();
+        self.auxtemp3 = ko.observable();
+        self.auxtemp2 = ko.observable();
+        self.auxtemp1 = ko.observable();
+        self.auxtemp0 = ko.observable();
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
           if (plugin != "I2CCaseController") {
@@ -29,25 +30,28 @@ $(function() {
 
           if (data.msgType == "tempUpdate") {
             if (data.sensorAlias == "bus.7") {
-                self.caseTemp("Case: " + data.value + " °C");
+                self.auxtemp7(data.sensorName + ": " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.6") {
-                self.Z_L_Temp("Z Left Motor: " + data.value + " °C");
+                self.auxtemp6(data.sensorName + ": " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.5") {
-                self.Z_R_Temp("Z Right Motor: " + data.value + " °C");
+                self.auxtemp5(data.sensorName + ": " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.4") {
-              self.YTemp("Y Motor: " + data.value + " °C");
+                self.auxtemp4(data.sensorName + ": " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.3") {
-              self.XTemp("X Motor: " + data.value + " °C");
+                self.auxtemp3(data.sensorName + ": " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.2") {
-              self.ETemp("E Motor: " + data.value + " °C");
+                self.auxtemp2(data.sensorName + ": " + data.value + " °C");
             }
             if (data.sensorAlias == "bus.1") {
-              self.PSUTemp("24V PSU: " + data.value + " °C");
+                self.auxtemp1(data.sensorName + ": " + data.value + " °C");
+            }
+            if (data.sensorAlias == "bus.0") {
+                self.auxtemp0(data.sensorName + ": " + data.value + " °C");
             }
           }
         }
