@@ -16,62 +16,63 @@ $(function() {
 
         self.machinePowerState = ko.observable('unknown');
         self.fanPowerState = ko.observable('unknown');
-        self.caselightState = ko.observable('unknown');
+        self.caseLightState = ko.observable('unknown');
+        self.machineLightState = ko.observable('unknown');
 
-        self.onTabChange = function(next, current) {
-          if(next == "#control")
-          {
-            $.ajax({
-              url: API_BASEURL + "plugin/I2CCaseController",
-              type: "POST",
-              dataType: "json",
-              data: JSON.stringify({
-                command: "caseLightOn"
-              }),
-              contentType: "application/json; charset=UTF-8",
-              error: function (data, status) {
-                var options = {
-                  title: "Case Light On Failed.",
-                  text: data.responseText,
-                  hide: true,
-                  buttons: {
-                    sticker: false,
-                    closer: true
-                  },
-                  type: "error"
-                };
+        // self.onTabChange = function(next, current) {
+        //   if(next == "#control")
+        //   {
+        //     $.ajax({
+        //       url: API_BASEURL + "plugin/I2CCaseController",
+        //       type: "POST",
+        //       dataType: "json",
+        //       data: JSON.stringify({
+        //         command: "caseLightOn"
+        //       }),
+        //       contentType: "application/json; charset=UTF-8",
+        //       error: function (data, status) {
+        //         var options = {
+        //           title: "Case Light On Failed.",
+        //           text: data.responseText,
+        //           hide: true,
+        //           buttons: {
+        //             sticker: false,
+        //             closer: true
+        //           },
+        //           type: "error"
+        //         };
   
-                new PNotify(options);
-              }
-            });
-          }
-          else if(current == "#control")
-          {
-            $.ajax({
-              url: API_BASEURL + "plugin/I2CCaseController",
-              type: "POST",
-              dataType: "json",
-              data: JSON.stringify({
-                command: "caseLightOff"
-              }),
-              contentType: "application/json; charset=UTF-8",
-              error: function (data, status) {
-                var options = {
-                  title: "Case Light Off Failed.",
-                  text: data.responseText,
-                  hide: true,
-                  buttons: {
-                    sticker: false,
-                    closer: true
-                  },
-                  type: "error"
-                };
+        //         new PNotify(options);
+        //       }
+        //     });
+        //   }
+        //   else if(current == "#control")
+        //   {
+        //     $.ajax({
+        //       url: API_BASEURL + "plugin/I2CCaseController",
+        //       type: "POST",
+        //       dataType: "json",
+        //       data: JSON.stringify({
+        //         command: "caseLightOff"
+        //       }),
+        //       contentType: "application/json; charset=UTF-8",
+        //       error: function (data, status) {
+        //         var options = {
+        //           title: "Case Light Off Failed.",
+        //           text: data.responseText,
+        //           hide: true,
+        //           buttons: {
+        //             sticker: false,
+        //             closer: true
+        //           },
+        //           type: "error"
+        //         };
   
-                new PNotify(options);
-              }
-            });
-          }
-        }
+        //         new PNotify(options);
+        //       }
+        //     });
+        //   }
+        // }
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
           if (plugin != "I2CCaseController") {
@@ -79,7 +80,7 @@ $(function() {
           }
 
           if (data.msgType == "caseLightState") {
-            self.caselightState(data.value);
+            self.caseLightState(data.value);
           }
 
           if (data.msgType == "fanPowerState") {
@@ -88,6 +89,10 @@ $(function() {
 
           if (data.msgType == "machinePowerState") {
             self.machinePowerState(data.value);
+          }
+
+          if (data.msgType == "machineLightState") {
+            self.machineLightState(data.value);
           }
         }
 
@@ -104,6 +109,33 @@ $(function() {
             error: function (data, status) {
               var options = {
                 title: "Case Light Toggle Failed.",
+                text: data.responseText,
+                hide: true,
+                buttons: {
+                  sticker: false,
+                  closer: true
+                },
+                type: "error"
+              };
+
+              new PNotify(options);
+            }
+          });
+        }
+
+        //called when the machine light button is pressed
+        self.machineLightCb = function() {
+          $.ajax({
+            url: API_BASEURL + "plugin/I2CCaseController",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify({
+              command: "machineLightToggle"
+            }),
+            contentType: "application/json; charset=UTF-8",
+            error: function (data, status) {
+              var options = {
+                title: "Machine Light Toggle Failed.",
                 text: data.responseText,
                 hide: true,
                 buttons: {

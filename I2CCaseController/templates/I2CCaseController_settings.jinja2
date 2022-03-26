@@ -47,6 +47,10 @@
         <div class="controls">
             <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_machine_fan">
         </div>
+        <label class="control-label">{{ _('Machine Light') }}</label>
+        <div class="controls">
+            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_machine_light">
+        </div>
 
         <h4>{{ _('Servo Pins') }}</h4>
         <label class="control-label">{{ _('Valve Servo Pin') }}</label>
