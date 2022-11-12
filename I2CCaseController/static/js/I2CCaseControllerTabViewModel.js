@@ -23,6 +23,8 @@ $(function() {
         self.auxtemp1 = ko.observable();
         self.auxtemp0 = ko.observable();
 
+        self.valvePosition = ko.observable();
+
         self.onDataUpdaterPluginMessage = function(plugin, data) {
           if (plugin != "I2CCaseController") {
             return;
@@ -54,6 +56,40 @@ $(function() {
                 self.auxtemp0(data.sensorName + ": " + data.value + " °C");
             }
           }
+
+          if (data.msgType == "valvePositionUpdate")
+          {
+            self.valvePosition("Valve Position: " + data.value + "%");
+          }
+        }
+
+        //for the valve position slider
+        var valvePositionSlider = document.getElementById("valvePercentageSlider");
+        valvePositionSlider.oninput = function() {
+            $.ajax({
+            url: API_BASEURL + "plugin/I2CCaseController",
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify({
+                command: "valvePercentageSet",
+                valvePercentage: this.value
+            }),
+            contentType: "application/json; charset=UTF-8",
+            error: function (data, status) {
+                var options = {
+                title: "Setting of Valve Position Failed!",
+                text: data.responseText,
+                hide: true,
+                buttons: {
+                    sticker: false,
+                    closer: true
+                },
+                type: "error"
+                };
+
+                new PNotify(options);
+            }
+            });
         }
     }
 

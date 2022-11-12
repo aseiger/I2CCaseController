@@ -6,3 +6,9 @@
 <label data-bind="text: auxtemp5()"></label>
 <label data-bind="text: auxtemp6()"></label>
 <label data-bind="text: auxtemp7()"></label>
+
+<label class="control-label">{{ _('Valve Open Percentage') }}</label>
+<div class="controls">
+    <input type="range" min="0" max="1" step="any" class="slider" id="valvePercentageSlider">
+</div>
+<label data-bind="text: valvePosition()"></label>

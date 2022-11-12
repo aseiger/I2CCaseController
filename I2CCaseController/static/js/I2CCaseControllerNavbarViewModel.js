@@ -10,69 +10,10 @@ $(function() {
 
         self.loginStateViewModel = parameters[0];
 
-        // assign the injected parameters, e.g.:
-        // self.loginStateViewModel = parameters[0];
-        // self.settingsViewModel = parameters[1];
-
         self.machinePowerState = ko.observable('unknown');
         self.fanPowerState = ko.observable('unknown');
         self.caseLightState = ko.observable('unknown');
         self.machineLightState = ko.observable('unknown');
-
-        // self.onTabChange = function(next, current) {
-        //   if(next == "#control")
-        //   {
-        //     $.ajax({
-        //       url: API_BASEURL + "plugin/I2CCaseController",
-        //       type: "POST",
-        //       dataType: "json",
-        //       data: JSON.stringify({
-        //         command: "caseLightOn"
-        //       }),
-        //       contentType: "application/json; charset=UTF-8",
-        //       error: function (data, status) {
-        //         var options = {
-        //           title: "Case Light On Failed.",
-        //           text: data.responseText,
-        //           hide: true,
-        //           buttons: {
-        //             sticker: false,
-        //             closer: true
-        //           },
-        //           type: "error"
-        //         };
-  
-        //         new PNotify(options);
-        //       }
-        //     });
-        //   }
-        //   else if(current == "#control")
-        //   {
-        //     $.ajax({
-        //       url: API_BASEURL + "plugin/I2CCaseController",
-        //       type: "POST",
-        //       dataType: "json",
-        //       data: JSON.stringify({
-        //         command: "caseLightOff"
-        //       }),
-        //       contentType: "application/json; charset=UTF-8",
-        //       error: function (data, status) {
-        //         var options = {
-        //           title: "Case Light Off Failed.",
-        //           text: data.responseText,
-        //           hide: true,
-        //           buttons: {
-        //             sticker: false,
-        //             closer: true
-        //           },
-        //           type: "error"
-        //         };
-  
-        //         new PNotify(options);
-        //       }
-        //     });
-        //   }
-        // }
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
           if (plugin != "I2CCaseController") {

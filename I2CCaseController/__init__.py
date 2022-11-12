@@ -4,10 +4,12 @@ from . import I2CGPIO
 from . import I2CPWM
 from . import I2CServos
 from . import DS18B20
+from . import VentValve
 from digitalio import Direction
 import time
 import threading
 from octoprint.events import Events
+from simple_pid import PID
 
 import octoprint.plugin
 
@@ -31,6 +33,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     machinePowerDownTimer = threading.Timer(0, 0)
 
     lightOnReason = "none"
+
+    caste_temp_pid = PID()
 
     def __init__(self):
         self.mqtt_publish = lambda *args, **kwargs: None
@@ -73,7 +77,12 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             ds18b20_bus4_alias="",
             ds18b20_bus5_alias="",
             ds18b20_bus6_alias="",
-            ds18b20_bus7_alias=""
+            ds18b20_bus7_alias="",
+            case_pid_kp="1",
+            case_pid_ki="0",
+            case_pid_kd="0",
+            case_pid_out_low="0",
+            case_pid_out_high="1"
         )
 
     def onewire_bus_to_alias(self, bus):
@@ -141,22 +150,18 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def door_switch_callback(self, pin, value):
         if(not self.lightTimer.is_alive()):
             if(value == True):
-                if(not self.lightOnReason == "tabSelect"):
-                    self.case_light_on()
-                    self.lightOnReason = "door"
+                self.case_light_on()
+                self.lightOnReason = "door"
             else:
-                if(not self.lightOnReason == "tabSelect"):
-                    self.case_light_off()
+                self.case_light_off()
 
     def side_button_callback(self, pin, value):
         if(value == True):
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
-                if(not self.lightOnReason == "tabSelect"):
-                    self.case_light_on(timeout=self.param_case_light_timeout)
-                    self.lightOnReason = "switch"
+                self.case_light_on(timeout=self.param_case_light_timeout)
+                self.lightOnReason = "switch"
             else:
-                if(not self.lightOnReason == "tabSelect"):
-                    self.case_light_off()
+                self.case_light_off()
 
     def send_temp_update(self):
         try:
@@ -289,6 +294,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             machinePowerToggle=[],
             machineLightToggle=[],
             fanPowerSet=[],
+            valvePercentageSet=[],
             valvePositionSet=[],
             lightBrightnessSet=[],
             caseLightOn=[],
@@ -319,6 +325,12 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                                                  dict(
                                                       msgType="fanPowerState",
                                                       value=stateStr))
+
+    def update_valve_position(self, valve_position):
+        self._plugin_manager.send_plugin_message(self._identifier,
+                                                 dict(
+                                                      msgType="valvePositionUpdate",
+                                                      value=valve_position))
 
     def update_case_light_status(self, state="unknown"):
         stateStr = state
@@ -385,6 +397,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif command == "fanPowerSet":
             self.tPWM.set_channel(self.pin_pwm_fan, float(data["fanPowerLevel"]))
 
+        elif command == "valvePercentageSet":
+            vent_valve = VentValve.VentValve(self.param_vent_valve_closed, self.param_vent_valve_open)
+            self.tServo.set_channel(self.pin_servo_vent_valve, vent_valve.set_percent(float(data["valvePercentage"])))
+            self.update_valve_position(vent_valve.set_percent(float(data["valvePercentage"])))
+
         elif command == "valvePositionSet":
             self.tServo.set_channel(self.pin_servo_vent_valve, float(data["valvePosition"]))
 
@@ -405,9 +422,6 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.update_machine_power()
             self.update_case_light_status()
             self.update_machine_light_status()
-        elif event == Events.CLIENT_CLOSED:
-            if(self.lightOnReason == "tabSelect"):
-                self.case_light_off()
         elif event == Events.DISCONNECTED:
             self._logger.info("DISCONNECTED")
         elif event == Events.PRINT_STARTED:
@@ -418,6 +432,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
             self.machinePowerDownTimer.cancel()
 
+            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 1.0, self.param_case_light_ramp_time)
+            self.update_machine_light_status("on")
+
         elif event == Events.PRINT_DONE:
             self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
             self.tPWM.set_channel(self.pin_pwm_fan, 0)
@@ -427,13 +444,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.machinePowerDownTimer = threading.Timer(self.printer_shutdown_time_delay, self.machine_off)
             self.machinePowerDownTimer.start()
 
-    # def get_template_vars(self):
-    #     return dict(
-    #         pwm_addr=self._settings.get(["pwm_addr"]),
-    #         servo_addr=self._settings.get(["servo_addr"]),
-    #         gpio_addr=self._settings.get(["gpio_addr"]),
-    #         thermistor_addr=self._settings.get(["thermistor_addr"])
-    #     )
+            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 0.0, self.param_case_light_ramp_time)
+            self.update_machine_light_status("off")
 
     def get_template_configs(self):
         return [
