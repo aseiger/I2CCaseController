@@ -9,6 +9,7 @@ _DOOR_SWITCH_PIN = 2
 _SIDE_BUTTON_PIN = 3
 _MACHINE_POWER_PIN = 1
 _FAN_POWER_PIN = 0
+_MACHINE_ON_OFF_PIN = 5
 
 _LIGHT_RAMP_TIME = 2
 _LIGHT_ON_VAL = 1.0
@@ -37,6 +38,11 @@ def pressed_callback(pin, value):
             tPWM.ramp_channel(_CASE_LIGHT_PIN, _LIGHT_OFF_VAL, _LIGHT_RAMP_TIME)
             lightState = False
 
+    machine_power_state = tMCP.get_pin_value(_MACHINE_POWER_PIN)
+    if (machine_power_state == False and pin == _MACHINE_ON_OFF_PIN):
+        tMCP.set_pin_value(_MACHINE_POWER_PIN, True)
+
+
 if __name__ == '__main__':
     tPWM.set_channel(_CASE_LIGHT_PIN, 0)
     tPWM.set_channel(_FAN_SPEED_PIN, 0)
@@ -44,11 +50,12 @@ if __name__ == '__main__':
     tMCP.set_direction(_MACHINE_POWER_PIN, Direction.OUTPUT)
     tMCP.set_direction(_FAN_POWER_PIN, Direction.OUTPUT)
 
-    tMCP.set_pin_value(_MACHINE_POWER_PIN, 1)
+    tMCP.set_pin_value(_MACHINE_POWER_PIN, 0)
     tMCP.set_pin_value(_FAN_POWER_PIN, 0)
 
     tMCP.poll_pin(_DOOR_SWITCH_PIN, pressed_callback, poll_rate = 0.1)
     tMCP.poll_pin(_SIDE_BUTTON_PIN, pressed_callback, poll_rate = 0.1)
+    tMCP.poll_pin(_MACHINE_ON_OFF_PIN, pressed_callback, poll_rate = 0.1)
 
     tPWM.ramp_channel(_FAN_SPEED_PIN, 0, 1)
 

@@ -32,6 +32,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     machineConnectTimer = threading.Timer(0, 0)
     machinePowerDownTimer = threading.Timer(0, 0)
 
+    machine_power_button_timer = threading.Timer(0, 0)
+
     lightOnReason = "none"
 
     caste_temp_pid = PID()
@@ -58,6 +60,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             pin_pwm_machine_light="2",
             pin_gpio_door_switch="2",
             pin_gpio_side_button="3",
+            pin_gpio_machine_power_button="4",
             param_case_light_timeout="60",
             param_case_light_ramp_time="1",
             param_case_light_brightness="0.2",
@@ -82,7 +85,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             case_pid_ki="0",
             case_pid_kd="0",
             case_pid_out_low="0",
-            case_pid_out_high="1"
+            case_pid_out_high="1",
         )
 
     def onewire_bus_to_alias(self, bus):
@@ -163,6 +166,18 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             else:
                 self.case_light_off()
 
+    def machine_power_button_callback(self, pin, value):
+        self._logger.info("Machine Power Button Pressed: "+ str(value))
+        if(value == True):
+            if self.machine_power_button_timer.finished.is_set() == False:
+                self.machine_power_button_timer.cancel()
+                self.machine_on()
+        elif(value == False):
+            if self.machine_power_button_timer is not None:
+                self.machine_power_button_timer.cancel()
+            self.machine_power_button_timer = threading.Timer(5, self.machine_off)
+            self.machine_power_button_timer.start()
+
     def send_temp_update(self):
         try:
             self.DS18B20_Sensors = DS18B20.enumerate_DS18B20_sensors()
@@ -238,6 +253,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     @property
     def pin_gpio_side_button(self):
         return int(self._settings.get(["pin_gpio_side_button"]))
+
+    @property
+    def pin_gpio_machine_power_button(self):
+        return int(self._settings.get(["pin_gpio_machine_power_button"]))
 
     @property
     def param_case_light_timeout(self):
@@ -504,6 +523,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("Machine Light PWM Pin: %s", self._settings.get(["pwm_pin_machine_light"]))
         self._logger.info("Door Switch GPIO Pin: %s", self._settings.get(["pin_gpio_door_switch"]))
         self._logger.info("Side Button GPIO Pin: %s", self._settings.get(["pin_gpio_side_button"]))
+        self._logger.info("Machine Power Button GPIO Pin: %s", self._settings.get(["pin_gpio_machine_power_button"]))
 
         self._logger.info("Machine GPIO On State: %s", self.pin_gpio_machine_on_state)
         self._logger.info("Fan Power GPIO On State: %s", self.pin_gpio_fan_power_on_state)
@@ -530,9 +550,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
         self.tMCP.set_direction(self.pin_gpio_door_switch, Direction.INPUT)
         self.tMCP.set_direction(self.pin_gpio_side_button, Direction.INPUT)
+        self.tMCP.set_direction(self.pin_gpio_machine_power_button, Direction.INPUT)
 
         self.tMCP.poll_pin(self.pin_gpio_door_switch, self.door_switch_callback, poll_rate = 0.1)
         self.tMCP.poll_pin(self.pin_gpio_side_button, self.side_button_callback, poll_rate = 0.1)
+        self.tMCP.poll_pin(self.pin_gpio_machine_power_button, self.machine_power_button_callback, poll_rate = 0.1)
 
         self.tServo.set_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed)
 
