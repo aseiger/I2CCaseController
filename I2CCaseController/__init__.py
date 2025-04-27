@@ -584,9 +584,10 @@ def __plugin_check__():
         from digitalio import Direction
         from adafruit_mcp230xx.mcp23008 import MCP23008
         from adafruit_servokit import ServoKit
-        import adafruit_ADS1x15
+        import adafruit_ads1x15
         import pyownet
-    except ImportError:
+    except ImportError as e:
+        print(e)
         return False
 
     return True
