@@ -16,7 +16,7 @@ class I2CPWM(adafruit_pca9685.PCA9685):
         i2c = busio.I2C(board.SCL, board.SDA)
         super().__init__(i2c, address=0x41)
 
-        self.frequency = 2400
+        self.frequency = 1600
 
     def set_channel(self, pin, power):
         self.validate_pin(pin)
