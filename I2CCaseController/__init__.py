@@ -218,8 +218,38 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self._logger.info("Retrying I2C case controller hardware initialization...")
         if self._init_hardware():
             self._logger.info("I2C case controller hardware initialized")
+            self._resync_if_printing()
         else:
             self._schedule_hardware_retry()
+
+    def _resync_if_printing(self):
+        """Re-apply the printing case state if a print is already running.
+
+        Covers the case where the Pi (or just the I2C board) came up while
+        a print was in progress - startup defaults would otherwise leave
+        the case fan and vent valve off mid-print.
+        """
+        try:
+            if self._printer.is_printing():
+                self._logger.info("Printer is already printing - resyncing case state")
+                self._apply_printing_case_state(True)
+        except Exception as err:
+            self._logger.error("Failed to resync case state: %s", err)
+
+    def _apply_printing_case_state(self, printing):
+        """Apply case fan power, vent valve and machine light for a print state."""
+        if printing:
+            self.tMCP.set_pin_value(self.pin_gpio_fan_power, self.pin_gpio_fan_power_on_state)
+            self.tPWM.set_channel(self.pin_pwm_fan, self.param_fan_power)
+            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, self.param_vent_valve_actuation_time)
+            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 1.0, self.param_case_light_ramp_time)
+        else:
+            self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
+            self.tPWM.set_channel(self.pin_pwm_fan, 0)
+            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, self.param_vent_valve_actuation_time)
+            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 0.0, self.param_case_light_ramp_time)
+        self.update_fan_power()
+        self.update_machine_light_status("on" if printing else "off")
 
     def machine_on(self):
         if not self._require_hardware("machine_on"):
@@ -640,32 +670,20 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             if not self._require_hardware("PRINT_STARTED case state"):
                 return
 
-            self.tMCP.set_pin_value(self.pin_gpio_fan_power, self.pin_gpio_fan_power_on_state)
-            self.tPWM.set_channel(self.pin_pwm_fan, self.param_fan_power)
-            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, self.param_vent_valve_actuation_time)
-            self.update_fan_power()
+            self._apply_printing_case_state(True)
 
             if self.machinePowerDownTimer is not None:
                 self.machinePowerDownTimer.cancel()
-
-            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 1.0, self.param_case_light_ramp_time)
-            self.update_machine_light_status("on")
 
         elif event == Events.PRINT_DONE:
             if not self._require_hardware("PRINT_DONE case state"):
                 return
 
-            self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
-            self.tPWM.set_channel(self.pin_pwm_fan, 0)
-            self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, self.param_vent_valve_actuation_time)
-            self.update_fan_power()
+            self._apply_printing_case_state(False)
 
             self.machinePowerDownTimer = threading.Timer(self.printer_shutdown_time_delay, self.machine_off)
             self.machinePowerDownTimer.daemon = True
             self.machinePowerDownTimer.start()
-
-            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 0.0, self.param_case_light_ramp_time)
-            self.update_machine_light_status("off")
 
         elif event == Events.PRINT_CANCELLED:
             # A cancelled print will not fire PRINT_DONE, so the power-down
@@ -747,6 +765,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
         if self._init_hardware():
             self._logger.info("I2C case controller hardware initialized")
+            self._resync_if_printing()
         else:
             self._schedule_hardware_retry()
 
