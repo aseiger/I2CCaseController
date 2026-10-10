@@ -470,13 +470,28 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             fanPowerToggle=[],
             machinePowerToggle=[],
             machineLightToggle=[],
-            fanPowerSet=[],
-            valvePercentageSet=[],
-            valvePositionSet=[],
-            lightBrightnessSet=[],
             caseLightOn=[],
-            caseLightOff=[]
+            caseLightOff=[],
+            fanPowerSet=["fanPowerLevel"],
+            valvePercentageSet=["valvePercentage"],
+            valvePositionSet=["valvePosition"],
+            lightBrightnessSet=["lightBrightness"],
         )
+
+    def _api_command_value(self, data, key, minimum, maximum):
+        """Fetch a numeric value from API command data.
+
+        Raises ValueError with a clean, user-presentable message.
+        """
+        if data is None or key not in data:
+            raise ValueError("%s is required" % key)
+        try:
+            value = float(data[key])
+        except (TypeError, ValueError):
+            raise ValueError("%s must be a number" % key)
+        if value < minimum or value > maximum:
+            raise ValueError("%s must be between %s and %s" % (key, minimum, maximum))
+        return value
 
     def update_machine_power(self):
         stateStr = "unknown"
@@ -539,6 +554,18 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         if not self._require_hardware("API command %s" % command):
             return
 
+        data = data or {}
+
+        try:
+          return self._dispatch_api_command(command, data)
+        except ValueError as err:
+            self._logger.warning("API command %s rejected: %s", command, err)
+            import flask
+            import json
+            return flask.Response(json.dumps({"error": str(err)}), status=400,
+                                  mimetype="application/json")
+
+    def _dispatch_api_command(self, command, data):
         if command == "caseLightToggle":
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 self.case_light_on(timeout=self.param_case_light_timeout)
@@ -574,18 +601,24 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                 self.machine_on()
 
         elif command == "fanPowerSet":
-            self.tPWM.set_channel(self.pin_pwm_fan, float(data["fanPowerLevel"]))
+            self.tPWM.set_channel(self.pin_pwm_fan, self._api_command_value(data, "fanPowerLevel", 0, 1))
+            self.update_fan_power()
 
         elif command == "valvePercentageSet":
+            percentage = self._api_command_value(data, "valvePercentage", 0, 1)
             vent_valve = VentValve.VentValve(self.param_vent_valve_closed, self.param_vent_valve_open)
-            self.tServo.set_channel(self.pin_servo_vent_valve, vent_valve.set_percent(float(data["valvePercentage"])))
-            self.update_valve_position(vent_valve.set_percent(float(data["valvePercentage"])))
+            position = vent_valve.set_percent(percentage)
+            self.tServo.set_channel(self.pin_servo_vent_valve, position)
+            self.update_valve_position(position)
 
         elif command == "valvePositionSet":
-            self.tServo.set_channel(self.pin_servo_vent_valve, float(data["valvePosition"]))
+            position = self._api_command_value(data, "valvePosition", 0, 180)
+            self.tServo.set_channel(self.pin_servo_vent_valve, position)
+            self.update_valve_position(position)
 
         elif command == "lightBrightnessSet":
-            self.tPWM.set_channel(self.pin_pwm_light, float(data["lightBrightness"]))
+            self.tPWM.set_channel(self.pin_pwm_light, self._api_command_value(data, "lightBrightness", 0, 1))
+            self.update_case_light_status()
 
         elif command == "caseLightOn":
             self.case_light_on()
