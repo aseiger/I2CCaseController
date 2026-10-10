@@ -10,17 +10,51 @@ $(function() {
 
         self.loginStateViewModel = parameters[0];
 
-        self.auxtemp7 = ko.observable();
-        self.auxtemp6 = ko.observable();
-        self.auxtemp5 = ko.observable();
-        self.auxtemp4 = ko.observable();
-        self.auxtemp3 = ko.observable();
-        self.auxtemp2 = ko.observable();
-        self.auxtemp1 = ko.observable();
-        self.auxtemp0 = ko.observable();
+        // temperature sensors: [{alias, name, value}...] - only buses with
+        // a sensor that actually reported are shown
+        self.sensors = ko.observableArray();
 
-        self.valvePosition = ko.observable();
+        // valve
+        self.valvePosition = ko.observable(null);
         self.valveSlider = ko.observable(0);
+
+        // case status
+        self.machinePowerState = ko.observable("unknown");
+        self.fanPowerState = ko.observable("unknown");
+        self.caseLightState = ko.observable("unknown");
+        self.machineLightState = ko.observable("unknown");
+
+        var stateLabels = {
+            "on": "On",
+            "on_timeout": "On (timeout)",
+            "off": "Off",
+            "unknown": "–"
+        };
+
+        function stateLabel(state) {
+            return stateLabels[state] || "?";
+        }
+
+        self.machinePowerLabel = ko.pureComputed(function() {
+            return stateLabel(self.machinePowerState());
+        });
+        self.fanPowerLabel = ko.pureComputed(function() {
+            return stateLabel(self.fanPowerState());
+        });
+        self.caseLightLabel = ko.pureComputed(function() {
+            return stateLabel(self.caseLightState());
+        });
+        self.machineLightLabel = ko.pureComputed(function() {
+            return stateLabel(self.machineLightState());
+        });
+
+        self.valvePositionText = ko.pureComputed(function() {
+            var pos = self.valvePosition();
+            if (pos === null || pos === undefined) {
+                return "–";
+            }
+            return "Position: " + Math.round(pos * 10) / 10 + "°";
+        });
 
         // Send an API command with clean error reporting.
         self.sendCommand = function(command, data, errorTitle) {
@@ -53,52 +87,68 @@ $(function() {
             });
         };
 
+        function upsertSensor(alias, name, value) {
+            var existing = null;
+            ko.utils.arrayForEach(self.sensors(), function(sensor) {
+                if (sensor.alias() === alias) {
+                    existing = sensor;
+                }
+            });
+            if (existing) {
+                existing.name(name);
+                existing.value(value);
+            } else {
+                self.sensors.push({
+                    alias: ko.observable(alias),
+                    name: ko.observable(name),
+                    value: ko.observable(value)
+                });
+                // stable ordering by bus number (bus.2 before bus.10)
+                self.sensors.sort(function(a, b) {
+                    return a.alias().localeCompare(b.alias(), undefined, { numeric: true });
+                });
+            }
+        }
+
         self.onDataUpdaterPluginMessage = function(plugin, data) {
-          if (plugin != "I2CCaseController") {
-            return;
-          }
+            if (plugin != "I2CCaseController") {
+                return;
+            }
 
-          if (data.msgType == "tempUpdate") {
-            var text = data.sensorName + ": " + data.value + " °C";
-            if (data.sensorAlias == "bus.7") {
-                self.auxtemp7(text);
+            if (data.msgType == "tempUpdate") {
+                upsertSensor(data.sensorAlias, data.sensorName, data.value + " °C");
+            } else if (data.msgType == "valvePositionUpdate") {
+                self.valvePosition(parseFloat(data.value));
+            } else if (data.msgType == "machinePowerState") {
+                self.machinePowerState(data.value);
+            } else if (data.msgType == "fanPowerState") {
+                self.fanPowerState(data.value);
+            } else if (data.msgType == "caseLightState") {
+                self.caseLightState(data.value);
+            } else if (data.msgType == "machineLightState") {
+                self.machineLightState(data.value);
             }
-            if (data.sensorAlias == "bus.6") {
-                self.auxtemp6(text);
-            }
-            if (data.sensorAlias == "bus.5") {
-                self.auxtemp5(text);
-            }
-            if (data.sensorAlias == "bus.4") {
-                self.auxtemp4(text);
-            }
-            if (data.sensorAlias == "bus.3") {
-                self.auxtemp3(text);
-            }
-            if (data.sensorAlias == "bus.2") {
-                self.auxtemp2(text);
-            }
-            if (data.sensorAlias == "bus.1") {
-                self.auxtemp1(text);
-            }
-            if (data.sensorAlias == "bus.0") {
-                self.auxtemp0(text);
-            }
-          }
-
-          // value is the actual servo angle in degrees
-          if (data.msgType == "valvePositionUpdate")
-          {
-            self.valvePosition("Valve Position: " + data.value + "°");
-          }
         }
 
         // Apply the valve percentage on slider release (not on every input
         // event) so dragging the slider does not command the servo in a
         // rapid burst.
         self.valveSliderCb = function() {
-            var value = parseFloat(self.valveSlider());
-            self.sendCommand("valvePercentageSet", { valvePercentage: value }, "Setting valve position failed.");
+            self.sendCommand("valvePercentageSet",
+                { valvePercentage: self.valveSlider() / 100 },
+                "Setting valve position failed.");
+        };
+
+        self.valveOpenCb = function() {
+            self.valveSlider(100);
+            self.sendCommand("valvePercentageSet", { valvePercentage: 1 },
+                "Setting valve position failed.");
+        };
+
+        self.valveCloseCb = function() {
+            self.valveSlider(0);
+            self.sendCommand("valvePercentageSet", { valvePercentage: 0 },
+                "Setting valve position failed.");
         }
     }
 
