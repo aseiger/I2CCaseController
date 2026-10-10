@@ -142,7 +142,13 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                     "bus.5": self._settings.get(["ds18b20_bus5_alias"]),
                     "bus.6": self._settings.get(["ds18b20_bus6_alias"]),
                     "bus.7": self._settings.get(["ds18b20_bus7_alias"])}
-        return alias_map[bus]
+        name = alias_map.get(bus)
+        if not name:
+            # unknown bus or no alias configured: fall back to the raw bus
+            # name so the sensor still shows up (a KeyError here used to
+            # abort the whole update loop mid-iteration)
+            return bus
+        return name
 
     def _init_hardware(self):
         """Create the I2C hardware objects and apply safe defaults.
@@ -324,19 +330,27 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     def send_temp_update(self):
         try:
-            self.DS18B20_Sensors = DS18B20.enumerate_DS18B20_sensors()
+            # enumerate once and cache; re-enumerate after a failure so a
+            # transient 1-wire host hiccup recovers on the next tick
+            if self.DS18B20_Sensors is None:
+                self.DS18B20_Sensors = DS18B20.enumerate_DS18B20_sensors()
+                self._logger.info("Enumerated %d DS18B20 sensor(s)", len(self.DS18B20_Sensors))
+
             for sensor in self.DS18B20_Sensors:
+                sensor_name = self.onewire_bus_to_alias(sensor.alias)
                 self._plugin_manager.send_plugin_message(self._identifier,
                                                 dict(
                                                     msgType="tempUpdate",
                                                     sensorAlias=sensor.alias,
-                                                    sensorName=self.onewire_bus_to_alias(sensor.alias),
+                                                    sensorName=sensor_name,
                                                     value=sensor.temperature))
-                mqtt_topic = ''.join((filter(str.isalnum, self.onewire_bus_to_alias(sensor.alias))))
-                self.mqtt_publish("octoPrint/i2ccasecontroller/" + mqtt_topic, sensor.temperature)
+                if sensor_name:
+                    mqtt_topic = ''.join((filter(str.isalnum, sensor_name)))
+                    self.mqtt_publish("octoPrint/i2ccasecontroller/" + mqtt_topic, sensor.temperature)
 
         except Exception as err:
             self._logger.error("send_temp_update reported {0}".format(err))
+            self.DS18B20_Sensors = None
 
         self.tempDataPushTimer = threading.Timer(self.param_temp_display_update_rate, self.send_temp_update)
         self.tempDataPushTimer.daemon = True
