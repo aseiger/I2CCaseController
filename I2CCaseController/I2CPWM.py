@@ -4,62 +4,78 @@ import time
 import adafruit_pca9685
 import threading
 
-NUM_IO_PINS=16
-MAX_CHANNEL_POWER=0xFFFF
-RAMP_DELAY=0.05
+NUM_IO_PINS = 16
+MAX_CHANNEL_POWER = 0xFFFF
+RAMP_DELAY = 0.05
+# Ramps shorter than this are clamped to one step instead of dividing by ~0.
+MIN_RAMP_TIME = RAMP_DELAY
+
 
 class I2CPWM(adafruit_pca9685.PCA9685):
 
-    channelRampThreads = [threading.Thread()] * NUM_IO_PINS
-
-    def __init__(self):
+    def __init__(self, address=0x41):
         i2c = busio.I2C(board.SCL, board.SDA)
-        super().__init__(i2c, address=0x41)
+        super().__init__(i2c, address=address)
+
+        # All pwm_regs reads and writes are I2C transactions; busio.I2C is not
+        # thread safe, so every access happens under this lock.
+        self._i2c_lock = threading.Lock()
+        # Bumped for each new ramp command; a running ramp thread that notices
+        # a newer generation stops instead of fighting the new command.
+        self._ramp_generation = [0] * NUM_IO_PINS
 
         self.frequency = 1600
 
     def set_channel(self, pin, power):
         self.validate_pin(pin)
         self.validate_power(power)
-        self.channels[pin].duty_cycle = int(power * MAX_CHANNEL_POWER)
+        with self._i2c_lock:
+            self.channels[pin].duty_cycle = int(power * MAX_CHANNEL_POWER)
 
     def get_channel(self, pin):
         self.validate_pin(pin)
-        return self.channels[pin].duty_cycle / MAX_CHANNEL_POWER
+        with self._i2c_lock:
+            return self.channels[pin].duty_cycle / MAX_CHANNEL_POWER
 
     def ramp_channel(self, pin, new_power, ramp_time):
+        """Ramp a channel to new_power over ramp_time seconds.
+
+        Starting a new ramp supersedes any ramp already in flight on the same
+        channel: the old ramp thread stops, the new one starts from the
+        channel's current value. ramp_time is clamped to MIN_RAMP_TIME so a
+        zero (or negative) value can never crash or hang the ramp thread.
+        """
         self.validate_pin(pin)
         self.validate_power(new_power)
-        if(not self.channelRampThreads[pin].is_alive()):
-            self.channelRampThreads[pin] = threading.Thread(target=self.ramp_channel_thread, args=(pin, new_power, ramp_time), daemon=True)
-            self.channelRampThreads[pin].start()
-        return self.channelRampThreads[pin]
+        ramp_time = max(float(ramp_time or 0.0), MIN_RAMP_TIME)
 
-    def ramp_channel_thread(self, pin, new_power, ramp_time):
-        current_power = self.get_channel(pin)
-        current_power_raw = int(MAX_CHANNEL_POWER * current_power)
-        new_power_raw = int(new_power * MAX_CHANNEL_POWER)
-        steps_to_go = new_power_raw - current_power_raw
-        step_amount = int((RAMP_DELAY * abs(steps_to_go)) / ramp_time)
-        if(step_amount < 1):
-            step_amount = 1
+        current_raw = int(self.get_channel(pin) * MAX_CHANNEL_POWER)
+        target_raw = int(new_power * MAX_CHANNEL_POWER)
+        if current_raw == target_raw:
+            return None
 
-        if(steps_to_go < 0):
-            step_amount = step_amount*-1
+        with self._i2c_lock:
+            self._ramp_generation[pin] += 1
+            generation = self._ramp_generation[pin]
 
-        for i in range(current_power_raw, new_power_raw, step_amount):
-            newDutyCycle = 0
-            if(i < 0):
-                newDutyCycle = 0
-            elif(i > MAX_CHANNEL_POWER):
-                newDutyCycle = MAX_CHANNEL_POWER
-            else:
-                newDutyCycle = i
-            self.channels[pin].duty_cycle = newDutyCycle
-            time.sleep(RAMP_DELAY)
+        thread = threading.Thread(
+            target=self._ramp_channel_thread,
+            args=(pin, current_raw, target_raw, ramp_time, generation),
+            daemon=True,
+        )
+        thread.start()
+        return thread
 
-        self.channels[pin].duty_cycle = new_power_raw
-
+    def _ramp_channel_thread(self, pin, start_raw, target_raw, ramp_time, generation):
+        steps = max(1, int(round(ramp_time / RAMP_DELAY)))
+        for step in range(1, steps + 1):
+            if self._ramp_generation[pin] != generation:
+                return  # superseded by a newer command
+            value = start_raw + (target_raw - start_raw) * step // steps
+            with self._i2c_lock:
+                self.channels[pin].duty_cycle = value
+            if step < steps:
+                time.sleep(RAMP_DELAY)
 
     def validate_pin(self, pin):
         if(pin < 0 or pin > NUM_IO_PINS-1):
@@ -83,10 +99,10 @@ if __name__ == '__main__':
     time.sleep(1)
 
     # while(1):
-    #     tPWM.ramp_channel(3, 1, 1)
+    #     tPWM.ramp_channel(3, 1, 3)
     #     time.sleep(0)
 
-    #     tPWM.ramp_channel(3, 0, 1)
+    #     tPWM.ramp_channel(3, 0, 3)
     #     time.sleep(0)
 
     while(1):
