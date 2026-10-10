@@ -703,6 +703,21 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             dict(type="tab", custom_bindings=True)
         ]
 
+    ##~~ Template autoescaping (OctoPrint >= 1.11, enforced in 1.13)
+
+    def is_template_autoescaped(self):
+        # Templates only render gettext strings and Knockout data-bind
+        # attributes, so autoescaping is safe and recommended.
+        return True
+
+    ##~~ API protection (OctoPrint >= 1.11.2, default flips to True in the
+    ## future)
+
+    def is_api_protected(self):
+        # The API commands switch real power relays - require a logged-in
+        # user (the web UI's own requests carry the session cookie).
+        return True
+
 	##~~ AssetPlugin mixin
 
     def get_assets(self):
