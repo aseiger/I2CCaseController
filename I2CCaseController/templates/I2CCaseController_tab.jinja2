@@ -9,6 +9,7 @@
 
 <label class="control-label">{{ _('Valve Open Percentage') }}</label>
 <div class="controls">
-    <input type="range" min="0" max="1" step="any" class="slider" id="valvePercentageSlider">
+    <input type="range" min="0" max="1" step="0.01" class="slider"
+           data-bind="value: valveSlider, event: { change: valveSliderCb }">
 </div>
 <label data-bind="text: valvePosition()"></label>

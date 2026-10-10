@@ -668,6 +668,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.update_machine_power()
             self.update_case_light_status()
             self.update_machine_light_status()
+            if self.hardware_ready:
+                self.update_valve_position(self.tServo.get_channel(self.pin_servo_vent_valve))
         elif event == Events.DISCONNECTED:
             self._logger.info("DISCONNECTED")
         elif event == Events.PRINT_STARTED:
