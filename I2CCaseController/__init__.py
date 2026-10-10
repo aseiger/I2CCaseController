@@ -725,7 +725,6 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         # core UI here.
         return dict(
             js=["js/I2CCaseControllerNavbarViewModel.js", "js/I2CCaseControllerSettingsViewModel.js", "js/I2CCaseControllerTabViewModel.js"],
-            css=["css/I2CCaseController.css"],
             less=["less/I2CCaseController.less"]
         )
 

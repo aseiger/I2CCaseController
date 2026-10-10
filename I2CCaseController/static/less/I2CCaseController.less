@@ -1,1 +1,157 @@
-// TODO: Put your plugin's LESS here, have it generated to ../css.
+// I2CCaseController styles
+//
+// Compiled by OctoPrint at runtime (webassets).
+
+@i2ccc-on: #5cb85c;        // Bootstrap success
+@i2ccc-on-timeout: #f0ad4e; // Bootstrap warning
+@i2ccc-off: #d9534f;       // Bootstrap danger
+@i2ccc-unknown: #999999;
+@i2ccc-sensor-bg: #f5f5f5;
+
+// ---------------------------------------------------------------------------
+// Shared state colors (navbar icons + tab status labels)
+// ---------------------------------------------------------------------------
+
+.i2ccc-state(@color) {
+    color: @color !important;
+}
+
+#navbar_plugin_I2CCaseController {
+    > a > i.on { .i2ccc-state(@i2ccc-on); }
+    > a > i.on_timeout { .i2ccc-state(@i2ccc-on-timeout); }
+    > a > i.off { .i2ccc-state(@i2ccc-off); }
+    > a > i.unknown { .i2ccc-state(@i2ccc-unknown); }
+}
+
+// ---------------------------------------------------------------------------
+// Tab: temperature sensor cards
+// ---------------------------------------------------------------------------
+
+.i2ccc-sensor {
+    background: @i2ccc-sensor-bg;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 8px 6px;
+    margin-bottom: 10px;
+    text-align: center;
+    min-height: 64px;
+
+    .i2ccc-sensor-name {
+        color: #777777;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .i2ccc-sensor-value {
+        font-size: 20px;
+        font-weight: bold;
+        margin-top: 2px;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tab: valve panel
+// ---------------------------------------------------------------------------
+
+.i2ccc-valve-label {
+    margin-bottom: 4px;
+}
+
+.i2ccc-value-row {
+    margin-top: 8px;
+}
+
+.i2ccc-position {
+    font-weight: bold;
+    line-height: 18px;
+}
+
+// ---------------------------------------------------------------------------
+// Tab: status panel
+// ---------------------------------------------------------------------------
+
+.i2ccc-state-table {
+    margin-bottom: 0;
+
+    td {
+        border-color: #eeeeee;
+    }
+}
+
+.i2ccc-state-label {
+    &.on { .i2ccc-state(@i2ccc-on); background-color: @i2ccc-on; }
+    &.on_timeout { .i2ccc-state(@i2ccc-on-timeout); background-color: @i2ccc-on-timeout; }
+    &.off { .i2ccc-state(@i2ccc-off); background-color: @i2ccc-off; }
+    &.unknown { .i2ccc-state(#ffffff); background-color: @i2ccc-unknown; }
+}
+
+// ---------------------------------------------------------------------------
+// Sliders (tab + settings)
+// ---------------------------------------------------------------------------
+
+.i2ccc-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 1;
+    }
+
+    &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #4CAF50;
+        cursor: pointer;
+    }
+
+    &::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border: none;
+        border-radius: 50%;
+        background: #4CAF50;
+        cursor: pointer;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+#settings_plugin_I2CCaseController {
+    .panel {
+        margin-bottom: 10px;
+
+        .panel-heading {
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .panel-body {
+            padding: 10px 15px;
+        }
+    }
+
+    .i2ccc-help {
+        color: #999999;
+        font-size: 12px;
+    }
+
+    .test-btn {
+        margin-left: 8px;
+    }
+}
