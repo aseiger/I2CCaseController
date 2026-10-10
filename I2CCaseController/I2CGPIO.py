@@ -4,35 +4,40 @@ from digitalio import Direction
 from adafruit_mcp230xx.mcp23008 import MCP23008
 import time
 import threading
-import inspect
 
 NUM_IO_PINS=8
-RISING_AND_FALLING=0
 
 
 class I2CGPIO(MCP23008):
-    def __init__(self):
+    def __init__(self, address=0x20):
         i2c = busio.I2C(board.SCL, board.SDA)
-        super().__init__(i2c, address=0x20)
+        super().__init__(i2c, address=address)
 
-        # initialize io polling threads
-        self.poll_thread_executors = []
-        for i in range(0, NUM_IO_PINS):
-            self.poll_thread_executors.append(threading.Event())
+        # MCP23008 reads/writes are I2C transactions; busio.I2C is not
+        # thread safe and the pin poll threads run alongside API and
+        # event handlers, so every access happens under this lock.
+        self._i2c_lock = threading.Lock()
+
+        # one stop event per pin (a list comprehension, not [Event()]*N,
+        # so each pin has its own event)
+        self.poll_thread_executors = [threading.Event() for _ in range(NUM_IO_PINS)]
 
     def set_direction(self, pin, direction):
         self.validate_pin(pin)
         self.validate_direction(direction)
 
-        self.get_pin(pin).direction = direction
+        with self._i2c_lock:
+            self.get_pin(pin).direction = direction
 
     def set_pin_value(self, pin, value):
         self.validate_pin(pin)
-        self.get_pin(pin).value = value
+        with self._i2c_lock:
+            self.get_pin(pin).value = value
 
     def get_pin_value(self, pin):
         self.validate_pin(pin)
-        return self.get_pin(pin).value
+        with self._i2c_lock:
+            return self.get_pin(pin).value
 
     def poll_pin(self, pin, callback, poll_rate=0.1):
         self.validate_pin(pin)
@@ -64,7 +69,6 @@ class I2CGPIO(MCP23008):
     def validate_direction(self, direction):
         if(not isinstance(direction, Direction)):
             raise TypeError('Direction argument must be of type digitalio.Direction')
-
 
 
 

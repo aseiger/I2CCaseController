@@ -1,17 +1,48 @@
 # coding=utf-8
 from __future__ import absolute_import
+import time
+import threading
+from digitalio import Direction
+
+from octoprint.events import Events
+from simple_pid import PID
+
+import octoprint.plugin
 from . import I2CGPIO
 from . import I2CPWM
 from . import I2CServos
 from . import DS18B20
 from . import VentValve
-from digitalio import Direction
-import time
-import threading
-from octoprint.events import Events
-from simple_pid import PID
 
-import octoprint.plugin
+
+# seconds between hardware init retries while the I2C board is unreachable
+HARDWARE_RETRY_DELAY = 30
+
+
+def parse_i2c_address(value, default):
+    """Parse an I2C address setting.
+
+    Accepts "0x20", 32, "32" (decimal) or "20" (hex, I2C convention).
+    Falls back to `default` for anything unparseable or out of the valid
+    7-bit I2C range (0x03-0x77).
+    """
+    if value is None:
+        return default
+    text = str(value).strip()
+    try:
+        if text.lower().startswith("0x"):
+            address = int(text, 16)
+        else:
+            try:
+                address = int(text, 10)
+            except ValueError:
+                address = int(text, 16)
+    except ValueError:
+        return default
+    if not 0x03 <= address <= 0x77:
+        return default
+    return address
+
 
 class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                               octoprint.plugin.SettingsPlugin,
@@ -20,33 +51,47 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                               octoprint.plugin.SimpleApiPlugin,
                               octoprint.plugin.EventHandlerPlugin):
 
-
-    tMCP = I2CGPIO.I2CGPIO()
-    tPWM = I2CPWM.I2CPWM()
-    tServo = I2CServos.I2CServos()
-
-    lightTimer = threading.Timer(0, 0)
-
-    tempDataPushTimer = threading.Timer(0, 0)
-
-    machineConnectTimer = threading.Timer(0, 0)
-    machinePowerDownTimer = threading.Timer(0, 0)
-
-    machine_power_button_timer = threading.Timer(0, 0)
-
-    lightOnReason = "none"
-
-    caste_temp_pid = PID()
-
     def __init__(self):
         self.mqtt_publish = lambda *args, **kwargs: None
         self.mqtt_subscribe = lambda *args, **kwargs: None
         self.mqtt_unsubscribe = lambda *args, **kwargs: None
 
-	##~~ SettingsPlugin mixin
+        # I2C hardware objects. Created in on_after_startup() rather than at
+        # import time so a missing or busy board degrades to a logged error
+        # and a retry instead of crashing the plugin import.
+        self.tMCP = None
+        self.tPWM = None
+        self.tServo = None
+        self._hw_init_timer = None
+
+        # timers
+        self.lightTimer = None
+        self.tempDataPushTimer = None
+        self.machineConnectTimer = None
+        self.machinePowerDownTimer = None
+        self.machine_power_button_timer = None
+
+        self.lightOnReason = "none"
+
+        # WIP: PID for case temperature regulation (see case_pid_* settings)
+        self.caste_temp_pid = PID()
+
+        self.DS18B20_Sensors = None
+
+    @property
+    def hardware_ready(self):
+        return self.tMCP is not None and self.tPWM is not None and self.tServo is not None
+
+    def _require_hardware(self, what):
+        if self.hardware_ready:
+            return True
+        self._logger.warning("Case controller hardware not ready - skipping %s", what)
+        return False
+
+    ##~~ SettingsPlugin mixin
     def get_settings_defaults(self):
         return dict(
-			pwm_addr="0x41",
+            pwm_addr="0x41",
             servo_addr="0x40",
             gpio_addr="0x20",
             thermistors_addr="0x48",
@@ -99,21 +144,106 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                     "bus.7": self._settings.get(["ds18b20_bus7_alias"])}
         return alias_map[bus]
 
+    def _init_hardware(self):
+        """Create the I2C hardware objects and apply safe defaults.
+
+        Returns True on success. On failure all objects are reset to None.
+        """
+        self.tMCP = None
+        self.tPWM = None
+        self.tServo = None
+
+        try:
+            self.tMCP = I2CGPIO.I2CGPIO(self.gpio_addr)
+            self.tPWM = I2CPWM.I2CPWM(self.pwm_addr)
+            self.tServo = I2CServos.I2CServos(self.servo_addr)
+        except Exception as err:
+            self._logger.error("Failed to initialize I2C case controller hardware: %s", err)
+            self._logger.error("Check the I2C connection and addresses (gpio=%02x pwm=%02x servo=%02x). "
+                               "Retrying in %ds...", self.gpio_addr, self.pwm_addr, self.servo_addr,
+                               HARDWARE_RETRY_DELAY)
+            return False
+
+        try:
+            self._apply_safe_defaults()
+        except Exception as err:
+            self._logger.error("Failed to apply safe case controller defaults: %s", err)
+            self.tMCP = None
+            self.tPWM = None
+            self.tServo = None
+            return False
+
+        return True
+
+    def _apply_safe_defaults(self):
+        # everything off, valve closed
+        self.tPWM.set_channel(self.pin_pwm_light, 0)
+        self.tPWM.set_channel(self.pin_pwm_fan, 0)
+        self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
+        self.tPWM.set_channel(self.pin_pwm_machine_light, 0)
+
+        self.tMCP.set_direction(self.pin_gpio_machine_power, Direction.OUTPUT)
+        self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.pin_gpio_machine_on_state)
+
+        self.tMCP.set_direction(self.pin_gpio_fan_power, Direction.OUTPUT)
+        self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
+
+        self.tMCP.set_direction(self.pin_gpio_door_switch, Direction.INPUT)
+        self.tMCP.set_direction(self.pin_gpio_side_button, Direction.INPUT)
+        self.tMCP.set_direction(self.pin_gpio_machine_power_button, Direction.INPUT)
+
+        self.tMCP.poll_pin(self.pin_gpio_door_switch, self.door_switch_callback, poll_rate=0.1)
+        self.tMCP.poll_pin(self.pin_gpio_side_button, self.side_button_callback, poll_rate=0.1)
+        self.tMCP.poll_pin(self.pin_gpio_machine_power_button, self.machine_power_button_callback, poll_rate=0.1)
+
+        self.tServo.set_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed)
+
+    def _schedule_hardware_retry(self):
+        if self._hw_init_timer is not None and self._hw_init_timer.is_alive():
+            return
+        self._logger.info("Scheduling I2C hardware init retry in %ds", HARDWARE_RETRY_DELAY)
+        self._hw_init_timer = threading.Timer(HARDWARE_RETRY_DELAY, self._retry_hardware_init)
+        self._hw_init_timer.daemon = True
+        self._hw_init_timer.start()
+
+    def _retry_hardware_init(self):
+        if self.hardware_ready:
+            return
+        self._logger.info("Retrying I2C case controller hardware initialization...")
+        if self._init_hardware():
+            self._logger.info("I2C case controller hardware initialized")
+        else:
+            self._schedule_hardware_retry()
+
     def machine_on(self):
+        if not self._require_hardware("machine_on"):
+            return
+
+        # a manual power-on disarms any pending automatic power-off
+        if self.machinePowerDownTimer is not None:
+            self.machinePowerDownTimer.cancel()
+
         self.tMCP.set_pin_value(self.pin_gpio_machine_power, self.pin_gpio_machine_on_state)
 
         self.tPWM.set_channel(self.pin_pwm_machine_fan, 1.0)
 
         if self.machine_connect_disconnect_after_power:
+            if self.machineConnectTimer is not None:
+                self.machineConnectTimer.cancel()
             self.machineConnectTimer = threading.Timer(self.machine_power_connect_delay, self._printer.connect)
+            self.machineConnectTimer.daemon = True
             self.machineConnectTimer.start()
 
         self.update_machine_power()
 
     def machine_off(self):
+        if not self._require_hardware("machine_off"):
+            return
+
         if(not self._printer.is_printing()):
 
-            self.machineConnectTimer.cancel()
+            if self.machineConnectTimer is not None:
+                self.machineConnectTimer.cancel()
 
             if self.machine_connect_disconnect_after_power:
                 self._printer.disconnect()
@@ -126,17 +256,26 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self._logger.info("Machine Off canceled - printer is printing!")
 
     def case_light_on(self, timeout=0):
-        self.lightTimer.cancel()
+        if not self._require_hardware("case_light_on"):
+            return
+
+        if self.lightTimer is not None:
+            self.lightTimer.cancel()
         self.tPWM.ramp_channel(self.pin_pwm_light, self.param_case_light_brightness, self.param_case_light_ramp_time)
         self.update_case_light_status("on")
         if(timeout > 0):
             self.lightTimer = threading.Timer(timeout, self.case_light_off)
+            self.lightTimer.daemon = True
             self.lightTimer.start()
             self.update_case_light_status("on_timeout")
 
     def case_light_off(self, delay=0):
+        if not self._require_hardware("case_light_off"):
+            return
+
         self.lightOnReason = "none"
-        self.lightTimer.cancel()
+        if self.lightTimer is not None:
+            self.lightTimer.cancel()
 
         # if we try to turn the light off and the door is open, just cancel the timeout
         if(self.tMCP.get_pin_value(self.pin_gpio_door_switch) == True):
@@ -148,10 +287,11 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.update_case_light_status("off")
         else:
             self.lightTimer = threading.Timer(delay, self.case_light_off)
+            self.lightTimer.daemon = True
             self.lightTimer.start()
 
     def door_switch_callback(self, pin, value):
-        if(not self.lightTimer.is_alive()):
+        if(self.lightTimer is None or not self.lightTimer.is_alive()):
             if(value == True):
                 self.case_light_on()
                 self.lightOnReason = "door"
@@ -159,6 +299,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                 self.case_light_off()
 
     def side_button_callback(self, pin, value):
+        if not self._require_hardware("side_button_callback"):
+            return
         if(value == True):
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 self.case_light_on(timeout=self.param_case_light_timeout)
@@ -169,13 +311,15 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def machine_power_button_callback(self, pin, value):
         self._logger.info("Machine Power Button Pressed: "+ str(value))
         if(value == True):
-            if self.machine_power_button_timer.finished.is_set() == False:
+            # latched on: cancel any pending power-off and power the machine on
+            if self.machine_power_button_timer is not None:
                 self.machine_power_button_timer.cancel()
-                self.machine_on()
+            self.machine_on()
         elif(value == False):
             if self.machine_power_button_timer is not None:
                 self.machine_power_button_timer.cancel()
             self.machine_power_button_timer = threading.Timer(5, self.machine_off)
+            self.machine_power_button_timer.daemon = True
             self.machine_power_button_timer.start()
 
     def send_temp_update(self):
@@ -200,19 +344,19 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     @property
     def pwm_addr(self):
-        return int(self._settings.get(["pwm_addr"]))
+        return parse_i2c_address(self._settings.get(["pwm_addr"]), 0x41)
 
     @property
     def servo_addr(self):
-        return int(self._settings.get(["servo_addr"]))
+        return parse_i2c_address(self._settings.get(["servo_addr"]), 0x40)
 
     @property
     def gpio_addr(self):
-        return int(self._settings.get(["gpio_addr"]))
+        return parse_i2c_address(self._settings.get(["gpio_addr"]), 0x20)
 
     @property
     def thermistors_addr(self):
-        return int(self._settings.get(["thermistors_addr"]))
+        return parse_i2c_address(self._settings.get(["thermistors_addr"]), 0x48)
 
     @property
     def pin_gpio_machine_power(self):
@@ -322,9 +466,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     def update_machine_power(self):
         stateStr = "unknown"
-        if(self.tMCP.get_pin_value(self.pin_gpio_machine_power) == self.pin_gpio_machine_on_state):
+        if(self.hardware_ready and self.tMCP.get_pin_value(self.pin_gpio_machine_power) == self.pin_gpio_machine_on_state):
             stateStr = "on"
-        else:
+        elif(self.hardware_ready):
             stateStr = "off"
 
         self._plugin_manager.send_plugin_message(self._identifier,
@@ -334,9 +478,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
     def update_fan_power(self):
         stateStr = "unknown"
-        if(self.tMCP.get_pin_value(self.pin_gpio_fan_power) == self.pin_gpio_fan_power_on_state):
+        if(self.hardware_ready and self.tMCP.get_pin_value(self.pin_gpio_fan_power) == self.pin_gpio_fan_power_on_state):
             stateStr = "on"
-        else:
+        elif(self.hardware_ready):
             stateStr = "off"
             self.tPWM.set_channel(self.pin_pwm_fan, 0)
 
@@ -354,9 +498,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def update_case_light_status(self, state="unknown"):
         stateStr = state
         if(state == "unknown"):
-            if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
+            if(self.hardware_ready and self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 stateStr = "off"
-            else:
+            elif(self.hardware_ready):
                 stateStr = "on"
 
         self._plugin_manager.send_plugin_message(self._identifier,
@@ -367,9 +511,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def update_machine_light_status(self, state="unknown"):
         stateStr = state
         if(state == "unknown"):
-            if(self.tPWM.get_channel(self.pin_pwm_machine_light) == 0.0):
+            if(self.hardware_ready and self.tPWM.get_channel(self.pin_pwm_machine_light) == 0.0):
                 stateStr = "off"
-            else:
+            elif(self.hardware_ready):
                 stateStr = "on"
 
         self._plugin_manager.send_plugin_message(self._identifier,
@@ -378,7 +522,9 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
                                                       value=stateStr))
 
     def on_api_command(self, command, data):
-        import flask
+        if not self._require_hardware("API command %s" % command):
+            return
+
         if command == "caseLightToggle":
             if(self.tPWM.get_channel(self.pin_pwm_light) == 0.0):
                 self.case_light_on(timeout=self.param_case_light_timeout)
@@ -444,17 +590,24 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         elif event == Events.DISCONNECTED:
             self._logger.info("DISCONNECTED")
         elif event == Events.PRINT_STARTED:
+            if not self._require_hardware("PRINT_STARTED case state"):
+                return
+
             self.tMCP.set_pin_value(self.pin_gpio_fan_power, self.pin_gpio_fan_power_on_state)
             self.tPWM.set_channel(self.pin_pwm_fan, self.param_fan_power)
             self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_open, self.param_vent_valve_actuation_time)
             self.update_fan_power()
 
-            self.machinePowerDownTimer.cancel()
+            if self.machinePowerDownTimer is not None:
+                self.machinePowerDownTimer.cancel()
 
             self.tPWM.ramp_channel(self.pin_pwm_machine_light, 1.0, self.param_case_light_ramp_time)
             self.update_machine_light_status("on")
 
         elif event == Events.PRINT_DONE:
+            if not self._require_hardware("PRINT_DONE case state"):
+                return
+
             self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
             self.tPWM.set_channel(self.pin_pwm_fan, 0)
             self.tServo.ramp_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed, self.param_vent_valve_actuation_time)
@@ -464,14 +617,15 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.machinePowerDownTimer.daemon = True
             self.machinePowerDownTimer.start()
 
+            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 0.0, self.param_case_light_ramp_time)
+            self.update_machine_light_status("off")
+
         elif event == Events.PRINT_CANCELLED:
             # A cancelled print will not fire PRINT_DONE, so the power-down
             # timer armed by a previous PRINT_DONE (or started manually)
             # must be disarmed here or the machine powers off anyway.
-            self.machinePowerDownTimer.cancel()
-
-            self.tPWM.ramp_channel(self.pin_pwm_machine_light, 0.0, self.param_case_light_ramp_time)
-            self.update_machine_light_status("off")
+            if self.machinePowerDownTimer is not None:
+                self.machinePowerDownTimer.cancel()
 
     def get_template_configs(self):
         return [
@@ -483,8 +637,8 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 	##~~ AssetPlugin mixin
 
     def get_assets(self):
-		# Define your plugin's asset files to automatically include in the
-		# core UI here.
+        # Define your plugin's asset files to automatically include in the
+        # core UI here.
         return dict(
             js=["js/I2CCaseControllerNavbarViewModel.js", "js/I2CCaseControllerSettingsViewModel.js", "js/I2CCaseControllerTabViewModel.js"],
             css=["css/I2CCaseController.css"],
@@ -494,24 +648,24 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 	##~~ Softwareupdate hook
 
     def get_update_information(self):
-		# Define the configuration for your plugin to use with the Software Update
-		# Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
-		# for details.
+        # Define the configuration for your plugin to use with the Software Update
+        # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
+        # for details.
         return dict(
             I2CCaseController=dict(
                 displayName="I2ccasecontroller Plugin",
                 displayVersion=self._plugin_version,
 
-				# version check: github repository
+                # version check: github repository
                 type="github_release",
                 user="aseiger",
                 repo="I2CCaseController",
                 current=self._plugin_version,
 
-				# update method: pip
+                # update method: pip
                 pip="https://github.com/aseiger/I2CCaseController/archive/{target_version}.zip"
-			)
-		)
+            )
+        )
 
     ##~~ OnAfterStartup hook
 
@@ -524,10 +678,10 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
 
         self._logger.info("Machine Power GPIO Pin: %s", self._settings.get(["pin_gpio_machine_power"]))
         self._logger.info("Fan Power GPIO Pin: %s", self._settings.get(["pin_gpio_fan_power"]))
-        self._logger.info("Fan PWM Pin: %s", self._settings.get(["pin_pwm_fan"])),
+        self._logger.info("Fan PWM Pin: %s", self._settings.get(["pin_pwm_fan"]))
         self._logger.info("Light PWM Pin: %s", self._settings.get(["pin_pwm_light"]))
         self._logger.info("Machine Fan PWM Pin: %s", self._settings.get(["pin_pwm_machine_fan"]))
-        self._logger.info("Machine Light PWM Pin: %s", self._settings.get(["pwm_pin_machine_light"]))
+        self._logger.info("Machine Light PWM Pin: %s", self._settings.get(["pin_pwm_machine_light"]))
         self._logger.info("Door Switch GPIO Pin: %s", self._settings.get(["pin_gpio_door_switch"]))
         self._logger.info("Side Button GPIO Pin: %s", self._settings.get(["pin_gpio_side_button"]))
         self._logger.info("Machine Power Button GPIO Pin: %s", self._settings.get(["pin_gpio_machine_power_button"]))
@@ -544,37 +698,26 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             if "mqtt_unsubscribe" in helpers:
                 self.mqtt_unsubscribe = helpers["mqtt_unsubscribe"]
 
-        self.tPWM.set_channel(self.pin_pwm_light, 0)
-        self.tPWM.set_channel(self.pin_pwm_fan, 0)
-        self.tPWM.set_channel(self.pin_pwm_machine_fan, 0)
-        self.tPWM.set_channel(self.pin_pwm_machine_light, 0)
+        if self._init_hardware():
+            self._logger.info("I2C case controller hardware initialized")
+        else:
+            self._schedule_hardware_retry()
 
-        self.tMCP.set_direction(self.pin_gpio_machine_power, Direction.OUTPUT)
-        self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.pin_gpio_machine_on_state)
-
-        self.tMCP.set_direction(self.pin_gpio_fan_power, Direction.OUTPUT)
-        self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
-
-        self.tMCP.set_direction(self.pin_gpio_door_switch, Direction.INPUT)
-        self.tMCP.set_direction(self.pin_gpio_side_button, Direction.INPUT)
-        self.tMCP.set_direction(self.pin_gpio_machine_power_button, Direction.INPUT)
-
-        self.tMCP.poll_pin(self.pin_gpio_door_switch, self.door_switch_callback, poll_rate = 0.1)
-        self.tMCP.poll_pin(self.pin_gpio_side_button, self.side_button_callback, poll_rate = 0.1)
-        self.tMCP.poll_pin(self.pin_gpio_machine_power_button, self.machine_power_button_callback, poll_rate = 0.1)
-
-        self.tServo.set_channel(self.pin_servo_vent_valve, self.param_vent_valve_closed)
-
+        # temperature polling uses the 1-wire host service, not the I2C board
         self.tempDataPushTimer = threading.Timer(self.param_temp_display_update_rate, self.send_temp_update)
         self.tempDataPushTimer.daemon = True
         self.tempDataPushTimer.start()
 
     ## ~~Timelapse hooks
     def timelapse_capture_pre(self, filename):
+        if not self._require_hardware("timelapse capture lighting"):
+            return
         self.tPWM.set_channel(self.pin_pwm_light, 1)
         time.sleep(2)
 
     def timelapse_capture_post(self, filename, success):
+        if not self._require_hardware("timelapse capture lighting"):
+            return
         self._logger.info(self.lightOnReason)
         if (self.lightOnReason == "none"):
             self.tPWM.set_channel(self.pin_pwm_light, 0)
@@ -613,12 +756,12 @@ __plugin_pythoncompat__ = ">=3,<4" # only python 3
 #__plugin_pythoncompat__ = ">=2.7,<4" # python 2 and 3
 
 def __plugin_load__():
-	global __plugin_implementation__
-	__plugin_implementation__ = I2ccasecontrollerPlugin()
+    global __plugin_implementation__
+    __plugin_implementation__ = I2ccasecontrollerPlugin()
 
-	global __plugin_hooks__
-	__plugin_hooks__ = {
-		"octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
+    global __plugin_hooks__
+    __plugin_hooks__ = {
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
         "octoprint.timelapse.capture.pre": __plugin_implementation__.timelapse_capture_pre,
         "octoprint.timelapse.capture.post": __plugin_implementation__.timelapse_capture_post
-        }
+    }
