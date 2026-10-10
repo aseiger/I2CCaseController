@@ -461,7 +461,14 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
             self.update_fan_power()
 
             self.machinePowerDownTimer = threading.Timer(self.printer_shutdown_time_delay, self.machine_off)
+            self.machinePowerDownTimer.daemon = True
             self.machinePowerDownTimer.start()
+
+        elif event == Events.PRINT_CANCELLED:
+            # A cancelled print will not fire PRINT_DONE, so the power-down
+            # timer armed by a previous PRINT_DONE (or started manually)
+            # must be disarmed here or the machine powers off anyway.
+            self.machinePowerDownTimer.cancel()
 
             self.tPWM.ramp_channel(self.pin_pwm_machine_light, 0.0, self.param_case_light_ramp_time)
             self.update_machine_light_status("off")
