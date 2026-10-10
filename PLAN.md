@@ -79,3 +79,25 @@ Conventions:
 3. User restarts OctoPrint; live check: navbar states, door light, power button, valve
    slider, temp tab, print start/cancel/done behavior, timelapse capture.
 4. Merge `refactor` → `master`, tag `v0.2.0`.
+
+## UI pass (after restart #1, 2026-10-10)
+
+- [x] **U1** Forward-compat fixes from startup warnings: `is_template_autoescaped() -> True`,
+      `is_api_protected() -> True` (API drives power relays); installed metadata -> 0.2.0.
+- [x] **U2** Tab redesign: sensor card grid (only detected sensors, stable order), valve panel
+      (0-100% slider applied on release, live degree readout, Open/Close buttons), case status
+      panel (4 colored On/Off/unknown labels).
+- [x] **U3** Navbar: clear FA6 icons (power-off, fan, solid/outlined lightbulbs) + tooltips.
+- [x] **U4** Settings: 8 headed panels, help text, input constraints, Test buttons kept;
+      adds the previously missing power-button pin and both relay on-state fields.
+- [x] **U5** Styles consolidated into `static/less/I2CCaseController.less` (browser-side less.js
+      compilation, `rel="stylesheet/less"`); stale css file removed; state colors -> Bootstrap
+      palette; slider scoped to `.i2ccc-slider`.
+
+Verification done: jinja2 parse (autoescape render test for the `&` headings), `node --check` on
+all JS, LESS compiles (less 4), 41 unit tests green, KO 3.5.1 css/class binding semantics
+checked against the shipped source (state classes swap without wiping icon/label classes).
+
+- [ ] **U6** (user) restart OctoPrint, visual pass on tab/navbar/settings; iterate on look.
+- [ ] **U7** (later) i18n of PNotify strings; consider a `param` for timelapse light settle;
+      settings live-reload (C15); decide fate of the stale `~/.octoprint/plugins` copy.
