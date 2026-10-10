@@ -13,17 +13,17 @@ Conventions:
 
 ## P0 — Real bugs (fix first)
 
-- [ ] **C2** `I2CPWM`: parameterize I2C address (settings were dead knobs — 0x41 was hardcoded);
+- [x] **C2** `I2CPWM`: parameterize I2C address (settings were dead knobs — 0x41 was hardcoded);
       move `channelRampThreads` from class attribute to instance state; add I2C write lock;
       rewrite ramp as generation-guarded step interpolation (fixes `ZeroDivisionError` on
       `ramp_time=0` and race between `set_channel`/ramp thread, e.g. timelapse hook).
-- [ ] **C3** `I2CServos`: same treatment (address was hardcoded 0x40); fixes the
+- [x] **C3** `I2CServos`: same treatment (address was hardcoded 0x40); fixes the
       `ramp_time=0` **infinite loop** in `ramp_channel_thread`; fix "PCA9685" copy-paste error text.
-- [ ] **C4** `__init__.py`: startup set fan-power GPIO with `pin_gpio_machine_on_state`
+- [x] **C4** `__init__.py`: startup set fan-power GPIO with `pin_gpio_machine_on_state`
       instead of `pin_gpio_fan_power_on_state` (works only because both default to 0).
-- [ ] **C5** `__init__.py`: handle `Events.PRINT_CANCELLED` — the post-print power-down timer
+- [x] **C5** `__init__.py`: handle `Events.PRINT_CANCELLED` — the post-print power-down timer
       must be cancelled, otherwise the machine powers off 5 min after a cancel.
-- [ ] **C6** `__init__.py`: move hardware construction out of import time (class-body
+- [x] **C6** `__init__.py`: move hardware construction out of import time (class-body
       `tMCP/tPWM/tServo` ran at module import; missing/broken I2C board crashed plugin import,
       `__plugin_check__` could never gate it). Lazy init in `on_after_startup` with try/except,
       clear logging, 30 s retry. All timers + `lightOnReason` become instance state; replace
@@ -36,21 +36,21 @@ Conventions:
 
 ## P1 — Robustness & correctness
 
-- [ ] **C7** Temp polling: cache `enumerate_DS18B20_sensors()` result (currently re-enumerates
+- [x] **C7** Temp polling: cache `enumerate_DS18B20_sensors()` result (currently re-enumerates
       all sensors + opens a new pyownet proxy per sensor *every tick*); re-enumerate on failure;
       `onewire_bus_to_alias` must not raise `KeyError` for unknown buses (aborted the whole
       update loop); skip MQTT publish for empty display names (duplicate topics).
-- [ ] **C8** API commands: validate/clamp all numeric data (`valvePercentage`, `valvePosition`,
+- [x] **C8** API commands: validate/clamp all numeric data (`valvePercentage`, `valvePosition`,
       `fanPowerLevel`, `lightBrightness`), return clean 400s instead of raw 500 tracebacks;
       fix `get_api_commands` metadata (data-taking commands declared `[]`).
-- [ ] **C9** Startup resync: if the printer is already printing (Pi rebooted mid-print),
+- [x] **C9** Startup resync: if the printer is already printing (Pi rebooted mid-print),
       re-apply the "printing" case state (fan, valve, machine light) instead of forcing
       everything off.
-- [ ] **C10** Timelapse hooks: drop the blocking `time.sleep(2)`; restore the *measured*
+- [x] **C10** Timelapse hooks: drop the blocking `time.sleep(2)`; restore the *measured*
       pre-capture brightness instead of guessing from `lightOnReason`; push light state to UI.
       `case_light_off`: move `lightOnReason = "none"` after the door-open check so a
       door-kept-on light can't be killed by a coincidental post-capture.
-- [ ] **C11** UI: push state updates after `lightBrightnessSet`/`fanPowerSet`;
+- [x] **C11** UI: push state updates after `lightBrightnessSet`/`fanPowerSet`;
       `valvePositionSet` never pushed the new position (navbar/tab went stale);
       push valve position on `CLIENT_OPENED`; tab shows servo *angle* labeled as `%`;
       settings sliders drove the physical valve/servo on every `input` event via raw
@@ -59,14 +59,14 @@ Conventions:
 
 ## P2 — Cleanup & maintainability
 
-- [ ] **C12** Remove dead code from the package: `CaseControl.py` (standalone script,
+- [x] **C12** Remove dead code from the package: `CaseControl.py` (standalone script,
       absolute imports), `I2CThermistor.py` (runs hardware + print at module import —
       would crash if imported), `OnOffThermostat.py` (unused, debug print) → move to `dev/`;
       remove unused imports, py2 leftover, trailing-comma log tuple.
-- [ ] **C13** Metadata: `plugin_version` → `0.2.0`, real `plugin_description`,
+- [x] **C13** Metadata: `plugin_version` → `0.2.0`, real `plugin_description`,
       `plugin_url` points at `awseiger` but the repo is `aseiger`; write the README
       (still the plugin skeleton).
-- [ ] **C14** Tests: `tests/` with pytest for pure logic — valve percent↔angle mapping,
+- [x] **C14** Tests: `tests/` with stdlib unittest (pytest not in the venv) for pure logic — valve percent↔angle mapping,
       ramp step interpolation, thermostat hysteresis, address parsing, alias fallback.
 - [ ] **C15** (optional, later) settings live-reload via `on_settings_changed`; per-pin
       poll-thread consolidation; i18n of PNotify strings; decide fate of the
