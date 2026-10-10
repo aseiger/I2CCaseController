@@ -1,167 +1,235 @@
 <form class="form-horizontal">
-    <div class="control-group">
-        <h4>{{ _('I2C Settings') }}</h4>
-        <label class="control-label">{{ _('PWM Address') }}</label>
-        <div class="controls">
-            <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pwm_addr">
-        </div>
-        <label class="control-label">{{ _('Servo Address') }}</label>
-        <div class="controls">
-            <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.servo_addr">
-        </div>
-        <label class="control-label">{{ _('GPIO Address') }}</label>
-        <div class="controls">
-            <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.gpio_addr">
-        </div>
-        <label class="control-label">{{ _('Thermistors Addr') }}</label>
-        <div class="controls">
-            <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.thermistors_addr">
-        </div>
-        <h4>{{ _('GPIO Pins') }}</h4>
-        <label class="control-label">{{ _('Machine Power') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_machine_power">
-        </div>
-        <label class="control-label">{{ _('Fan Power') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_fan_power">
-        </div>
-        <label class="control-label">{{ _('Door Switch') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_door_switch">
-        </div>
-        <label class="control-label">{{ _('Side Button') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_side_button">
-        </div>
-        <h4>{{ _('PWM Pins') }}</h4>
-        <label class="control-label">{{ _('Case Light') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_light">
-        </div>
-        <label class="control-label">{{ _('Vent Fan') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_fan">
-        </div>
-        <label class="control-label">{{ _('Machine Cooling Fan') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_machine_fan">
-        </div>
-        <label class="control-label">{{ _('Machine Light') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_machine_light">
-        </div>
 
-        <h4>{{ _('Servo Pins') }}</h4>
-        <label class="control-label">{{ _('Valve Servo Pin') }}</label>
-        <div class="controls">
-            <input type="number" min="0" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_servo_vent_valve">
-        </div>
-
-        <h4>{{ _('Parameters') }}</h4>
-        <label class="control-label">{{ _('Light Brightness') }}</label>
-        <div class="controls">
-            <input type="range" min="0" max="1" step="any" class="slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_case_light_brightness">
-            <button type="button" class="btn btn-default btn-xs" data-bind="click: testLightBrightness">
-                {{ _('Test') }}
-            </button>
-            <h4> </h4>
-        </div>
-
-        <label class="control-label">{{ _('Vent Fan Power') }}</label>
-        <div class="controls">
-            <input type="range" min="0" max="1" step="any" class="slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_fan_power">
-            <button type="button" class="btn btn-default btn-xs" data-bind="click: testFanPower">
-                {{ _('Test') }}
-            </button>
-            <h4> </h4>
-        </div>
-
-        <label class="control-label">{{ _('Light Timeout') }}</label>
-        <div class="controls">
-            <input type="number" min="0" step="1" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.param_case_light_timeout">
-        </div>
-
-        <label class="control-label">{{ _('Light Ramp Time') }}</label>
-        <div class="controls">
-            <input type="number" min="0" step="any" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.param_case_light_ramp_time">
-        </div>
-
-        <label class="control-label">{{ _('Valve Open Angle') }}</label>
-        <div class="controls">
-            <input type="range" min="0" max="180" step="any" class="slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_open">
-            <button type="button" class="btn btn-default btn-xs" data-bind="click: testValveOpen">
-                {{ _('Test') }}
-            </button>
-            <h4> </h4>
-        </div>
-
-        <label class="control-label">{{ _('Valve Close Angle') }}</label>
-        <div class="controls">
-            <input type="range" min="0" max="180" step="any" class="slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_closed">
-            <button type="button" class="btn btn-default btn-xs" data-bind="click: testValveClosed">
-                {{ _('Test') }}
-            </button>
-            <h4> </h4>
-        </div>
-
-        <label class="control-label">{{ _('Valve Actuation Time') }}</label>
-        <div class="controls">
-            <input type="number" min="0.1" step="any" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_actuation_time">
-        </div>
-
-        <label class="control-label">{{ _('Temp Update Delay') }}</label>
-        <div class="controls">
-            <input type="number" min="2" max="30" step="any" class="input-mini" id="temperatureDisplayUpdateRateDelay" data-bind="value: settings.settings.plugins.I2CCaseController.param_temp_display_update_rate">
-        </div>
-
-        <label class="control-label">{{ _('') }}</label>
-        <div class="controls">
-            <input type="checkbox" id="automaticMachineConnectDisconnectCheckBox" data-bind="checked: settings.settings.plugins.I2CCaseController.machine_connect_disconnect_after_power">
-            <label>Connect, disconnect, and powerdown Machine</label>
-        </div>
-
-        <label class="control-label">{{ _('Power-On Connect Delay') }}</label>
-        <div class="controls">
-            <input type="number" min="0" step="any" class="input-mini" id="machinePowerOnDelay" data-bind="value: settings.settings.plugins.I2CCaseController.machine_power_connect_delay">
-        </div>
-
-        <label class="control-label">{{ _('Machine Shutdown Delay') }}</label>
-        <div class="controls">
-            <input type="number" min="0" step="any" class="input-mini" id="machineShutdownDelayNumber" data-bind="value: settings.settings.plugins.I2CCaseController.printer_shutdown_time_delay">
-        </div>
-
-        <label class="control-label">{{ _('1Wire Bus.0 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus0_alias">
-        </div>
-        <label class="control-label">{{ _('1Wire Bus.1 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus1_alias">
-        </div>
-        <label class="control-label">{{ _('1Wire Bus.2 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus2_alias">
-        </div>
-        <label class="control-label">{{ _('1Wire Bus.3 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus3_alias">
-        </div>
-        <label class="control-label">{{ _('1Wire Bus.4 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus4_alias">
-        </div>
-        <label class="control-label">{{ _('1Wire Bus.5 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus5_alias">
-        </div>
-        <label class="control-label">{{ _('1Wire Bus.6 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus6_alias">
-        </div>
-        <label class="control-label">{{ _('1Wire Bus.7 Alias') }}</label>
-        <div class="controls">
-            <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus7_alias">
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('I2C Addresses') }}</div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('PWM Address') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pwm_addr">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('Servo Address') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.servo_addr">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('GPIO Address') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.gpio_addr">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('Thermistors Addr') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.thermistors_addr">
+                    </div>
+                </div>
+            </div>
+            <span class="i2ccc-help">{{ _('Accept 0x-prefixed hex or decimal. Address changes apply on the next restart.') }}</span>
         </div>
     </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('Machine Power') }}</div>
+        <div class="panel-body">
+            <label class="control-label">{{ _('Power Relay GPIO Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="7" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_machine_power">
+            </div>
+            <label class="control-label">{{ _('Relay "On" State') }}</label>
+            <div class="controls">
+                <select class="input-mini" data-bind="options: ['0', '1'], optionsValue: $data, optionsText: $data, value: settings.settings.plugins.I2CCaseController.pin_gpio_machine_on_state"></select>
+            </div>
+            <span class="i2ccc-help">{{ _('GPIO level that means the machine is powered on (usually 0 for active-low relays).') }}</span>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('Vent Fan & Valve') }}</div>
+        <div class="panel-body">
+            <label class="control-label">{{ _('Fan Power GPIO Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="7" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_fan_power">
+            </div>
+            <label class="control-label">{{ _('Fan Relay "On" State') }}</label>
+            <div class="controls">
+                <select class="input-mini" data-bind="options: ['0', '1'], optionsValue: $data, optionsText: $data, value: settings.settings.plugins.I2CCaseController.pin_gpio_fan_power_on_state"></select>
+            </div>
+            <label class="control-label">{{ _('Fan PWM Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="15" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_fan">
+            </div>
+            <label class="control-label">{{ _('Fan Power Level') }}</label>
+            <div class="controls">
+                <input type="range" min="0" max="1" step="any" class="i2ccc-slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_fan_power">
+                <button type="button" class="btn btn-default btn-xs test-btn" data-bind="click: testFanPower">
+                    {{ _('Test') }}
+                </button>
+            </div>
+            <label class="control-label">{{ _('Valve Servo Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="15" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_servo_vent_valve">
+            </div>
+            <label class="control-label">{{ _('Valve Open Angle') }}</label>
+            <div class="controls">
+                <input type="range" min="0" max="180" step="any" class="i2ccc-slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_open">
+                <button type="button" class="btn btn-default btn-xs test-btn" data-bind="click: testValveOpen">
+                    {{ _('Test') }}
+                </button>
+            </div>
+            <label class="control-label">{{ _('Valve Closed Angle') }}</label>
+            <div class="controls">
+                <input type="range" min="0" max="180" step="any" class="i2ccc-slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_closed">
+                <button type="button" class="btn btn-default btn-xs test-btn" data-bind="click: testValveClosed">
+                    {{ _('Test') }}
+                </button>
+            </div>
+            <label class="control-label">{{ _('Valve Actuation Time (s)') }}</label>
+            <div class="controls">
+                <input type="number" min="0.1" max="30" step="any" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.param_vent_valve_actuation_time">
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('Case Light') }}</div>
+        <div class="panel-body">
+            <label class="control-label">{{ _('Light PWM Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="15" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_light">
+            </div>
+            <label class="control-label">{{ _('Light Brightness') }}</label>
+            <div class="controls">
+                <input type="range" min="0" max="1" step="any" class="i2ccc-slider" data-bind="value: settings.settings.plugins.I2CCaseController.param_case_light_brightness">
+                <button type="button" class="btn btn-default btn-xs test-btn" data-bind="click: testLightBrightness">
+                    {{ _('Test') }}
+                </button>
+            </div>
+            <label class="control-label">{{ _('Light Ramp Time (s)') }}</label>
+            <div class="controls">
+                <input type="number" min="0.1" max="60" step="any" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.param_case_light_ramp_time">
+            </div>
+            <label class="control-label">{{ _('Side Button Timeout (s)') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="3600" step="1" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.param_case_light_timeout">
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('Machine Light & Cooling Fan') }}</div>
+        <div class="panel-body">
+            <label class="control-label">{{ _('Machine Light PWM Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="15" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_machine_light">
+            </div>
+            <label class="control-label">{{ _('Machine Cooling Fan PWM Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="15" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_pwm_machine_fan">
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('Case Inputs') }}</div>
+        <div class="panel-body">
+            <label class="control-label">{{ _('Door Switch GPIO Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="7" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_door_switch">
+            </div>
+            <label class="control-label">{{ _('Side Button GPIO Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="7" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_side_button">
+            </div>
+            <label class="control-label">{{ _('Power Button GPIO Pin') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="7" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.pin_gpio_machine_power_button">
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('Power Behavior') }}</div>
+        <div class="panel-body">
+            <div class="controls">
+                <input type="checkbox" id="automaticMachineConnectDisconnectCheckBox" data-bind="checked: settings.settings.plugins.I2CCaseController.machine_connect_disconnect_after_power">
+                <label for="automaticMachineConnectDisconnectCheckBox">{{ _('Connect, disconnect, and power down the machine with prints') }}</label>
+            </div>
+            <label class="control-label">{{ _('Power-On Connect Delay (s)') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="3600" step="any" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.machine_power_connect_delay">
+            </div>
+            <label class="control-label">{{ _('Post-Print Shutdown Delay (s)') }}</label>
+            <div class="controls">
+                <input type="number" min="0" max="86400" step="any" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.printer_shutdown_time_delay">
+            </div>
+            <span class="i2ccc-help">{{ _('After a print finishes, the machine powers off after this delay (cancelled if a new print starts or the power button is latched on).') }}</span>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">{{ _('Temperature Sensors') }}</div>
+        <div class="panel-body">
+            <label class="control-label">{{ _('Display Update Interval (s)') }}</label>
+            <div class="controls">
+                <input type="number" min="2" max="300" step="any" class="input-mini" data-bind="value: settings.settings.plugins.I2CCaseController.param_temp_display_update_rate">
+            </div>
+            <div class="row">
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 0 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus0_alias">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 1 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus1_alias">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 2 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus2_alias">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 3 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus3_alias">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 4 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus4_alias">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 5 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus5_alias">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 6 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus6_alias">
+                    </div>
+                </div>
+                <div class="col-xs-6">
+                    <label class="control-label">{{ _('1-Wire Bus 7 Name') }}</label>
+                    <div class="controls">
+                        <input type="text" class="input" data-bind="value: settings.settings.plugins.I2CCaseController.ds18b20_bus7_alias">
+                    </div>
+                </div>
+            </div>
+            <span class="i2ccc-help">{{ _('Display names for the 1-wire sensors (shown on the tab and used as MQTT topics). Empty names fall back to the bus name.') }}</span>
+        </div>
+    </div>
+
 </form>
