@@ -546,7 +546,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self.tMCP.set_pin_value(self.pin_gpio_machine_power, not self.pin_gpio_machine_on_state)
 
         self.tMCP.set_direction(self.pin_gpio_fan_power, Direction.OUTPUT)
-        self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_machine_on_state)
+        self.tMCP.set_pin_value(self.pin_gpio_fan_power, not self.pin_gpio_fan_power_on_state)
 
         self.tMCP.set_direction(self.pin_gpio_door_switch, Direction.INPUT)
         self.tMCP.set_direction(self.pin_gpio_side_button, Direction.INPUT)
