@@ -72,6 +72,7 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         self.machine_power_button_timer = None
 
         self.lightOnReason = "none"
+        self._timelapse_prev_brightness = 0.0
 
         # WIP: PID for case temperature regulation (see case_pid_* settings)
         self.caste_temp_pid = PID()
@@ -309,15 +310,18 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
         if not self._require_hardware("case_light_off"):
             return
 
-        self.lightOnReason = "none"
         if self.lightTimer is not None:
             self.lightTimer.cancel()
 
-        # if we try to turn the light off and the door is open, just cancel the timeout
+        # if we try to turn the light off and the door is open, just cancel the
+        # timeout and keep the light on. lightOnReason is only cleared once the
+        # light is actually switched off, so a door-kept-on light cannot be
+        # treated as "off" by e.g. the timelapse post-capture hook.
         if(self.tMCP.get_pin_value(self.pin_gpio_door_switch) == True):
             self.update_case_light_status("on")
             return
 
+        self.lightOnReason = "none"
         if(delay == 0):
             self.tPWM.ramp_channel(self.pin_pwm_light, 0, self.param_case_light_ramp_time)
             self.update_case_light_status("off")
@@ -778,17 +782,21 @@ class I2ccasecontrollerPlugin(octoprint.plugin.StartupPlugin,
     def timelapse_capture_pre(self, filename):
         if not self._require_hardware("timelapse capture lighting"):
             return
+        # The light switch is immediate, so no blocking sleep is needed here
+        # (the old time.sleep(2) delayed the camera capture on the
+        # timelapse thread). Remember the brightness to restore afterwards.
+        self._timelapse_prev_brightness = self.tPWM.get_channel(self.pin_pwm_light)
         self.tPWM.set_channel(self.pin_pwm_light, 1)
-        time.sleep(2)
 
     def timelapse_capture_post(self, filename, success):
         if not self._require_hardware("timelapse capture lighting"):
             return
-        self._logger.info(self.lightOnReason)
-        if (self.lightOnReason == "none"):
-            self.tPWM.set_channel(self.pin_pwm_light, 0)
-        else:
-            self.tPWM.set_channel(self.pin_pwm_light, self.param_case_light_brightness)
+        # Restore the exact pre-capture brightness instead of guessing from
+        # lightOnReason (which was wrong for manually set brightness and
+        # turned lights off that had no tracked reason).
+        self.tPWM.set_channel(self.pin_pwm_light, self._timelapse_prev_brightness)
+        self._timelapse_prev_brightness = 0.0
+        self.update_case_light_status()
 
 def __plugin_check__():
     # Make sure we only run our plugin if some_dependency is available
