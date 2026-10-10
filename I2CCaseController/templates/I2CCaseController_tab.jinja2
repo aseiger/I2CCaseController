@@ -1,20 +1,22 @@
-<div class="row">
-    <div class="col-sm-12 col-md-8">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <i class="fa-solid fa-temperature-half"></i>
+<!-- OctoPrint ships the Bootstrap 2.3.3 grid (row-fluid + span*), not the
+     Bootstrap 3 col-* grid, so the layout below uses the former. -->
+<div class="row-fluid">
+    <div class="span8">
+        <div class="i2ccc-panel">
+            <div class="i2ccc-panel-heading">
+                <i class="icon-fire"></i>
                 {{ _('Temperature Sensors') }}
             </div>
-            <div class="panel-body">
-                <div class="row">
-                    <div class="col-xs-6 col-sm-4 col-md-3" data-bind="foreach: sensors">
+            <div class="i2ccc-panel-body">
+                <div class="row-fluid">
+                    <div class="span3" data-bind="foreach: sensors">
                         <div class="i2ccc-sensor">
                             <div class="i2ccc-sensor-name" data-bind="text: name"></div>
                             <div class="i2ccc-sensor-value" data-bind="text: value"></div>
                         </div>
                     </div>
-                    <div class="col-xs-12" data-bind="visible: sensors().length === 0">
-                        <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="span12" data-bind="visible: sensors().length === 0">
+                        <i class="icon-exclamation-sign"></i>
                         {{ _('No 1-wire temperature sensors detected.') }}
                     </div>
                 </div>
@@ -22,23 +24,23 @@
         </div>
     </div>
 
-    <div class="col-sm-12 col-md-4">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <i class="fa-solid fa-fan"></i>
+    <div class="span4">
+        <div class="i2ccc-panel">
+            <div class="i2ccc-panel-heading">
+                <i class="icon-exchange"></i>
                 {{ _('Vent Valve') }}
             </div>
-            <div class="panel-body">
+            <div class="i2ccc-panel-body">
                 <label class="i2ccc-valve-label">{{ _('Open percentage') }}</label>
                 <input type="range" min="0" max="100" step="1" class="i2ccc-slider"
                        data-bind="value: valveSlider, event: { change: valveSliderCb }">
-                <div class="row i2ccc-value-row">
-                    <div class="col-xs-7 i2ccc-position" data-bind="text: valvePositionText"></div>
-                    <div class="col-xs-5 text-right">
-                        <button type="button" class="btn btn-xs btn-default" data-bind="click: valveCloseCb">
+                <div class="row-fluid i2ccc-value-row">
+                    <div class="span7 i2ccc-position" data-bind="text: valvePositionText"></div>
+                    <div class="span5 text-right">
+                        <button type="button" class="btn btn-small btn-default" data-bind="click: valveCloseCb">
                             {{ _('Close') }}
                         </button>
-                        <button type="button" class="btn btn-xs btn-default" data-bind="click: valveOpenCb">
+                        <button type="button" class="btn btn-small btn-default" data-bind="click: valveOpenCb">
                             {{ _('Open') }}
                         </button>
                     </div>
@@ -46,39 +48,39 @@
             </div>
         </div>
 
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                <i class="fa-solid fa-sliders"></i>
+        <div class="i2ccc-panel">
+            <div class="i2ccc-panel-heading">
+                <i class="icon-dashboard"></i>
                 {{ _('Case Status') }}
             </div>
-            <div class="panel-body">
+            <div class="i2ccc-panel-body">
                 <table class="table table-condensed i2ccc-state-table">
                     <tr>
                         <td>{{ _('Machine Power') }}</td>
                         <td class="text-right">
                             <span class="label i2ccc-state-label"
-                                  data-bind="css: machinePowerState, text: machinePowerLabel"></span>
+                                  data-bind="css: machinePowerState(), text: machinePowerLabel"></span>
                         </td>
                     </tr>
                     <tr>
                         <td>{{ _('Vent Fan Power') }}</td>
                         <td class="text-right">
                             <span class="label i2ccc-state-label"
-                                  data-bind="css: fanPowerState, text: fanPowerLabel"></span>
+                                  data-bind="css: fanPowerState(), text: fanPowerLabel"></span>
                         </td>
                     </tr>
                     <tr>
                         <td>{{ _('Case Light') }}</td>
                         <td class="text-right">
                             <span class="label i2ccc-state-label"
-                                  data-bind="css: caseLightState, text: caseLightLabel"></span>
+                                  data-bind="css: caseLightState(), text: caseLightLabel"></span>
                         </td>
                     </tr>
                     <tr>
                         <td>{{ _('Machine Light') }}</td>
                         <td class="text-right">
                             <span class="label i2ccc-state-label"
-                                  data-bind="css: machineLightState, text: machineLightLabel"></span>
+                                  data-bind="css: machineLightState(), text: machineLightLabel"></span>
                         </td>
                     </tr>
                 </table>

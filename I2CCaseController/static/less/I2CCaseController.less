@@ -24,6 +24,38 @@
 }
 
 // ---------------------------------------------------------------------------
+// Panels (OctoPrint ships Bootstrap 2.3.3, which has no .panel component -
+// these are self-contained so the look does not depend on the framework)
+// ---------------------------------------------------------------------------
+
+.i2ccc-panel {
+    background: #ffffff;
+    border: 1px solid #dddddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    .i2ccc-panel-heading {
+        padding: 8px 12px;
+        background: #f5f5f5;
+        border-bottom: 1px solid #dddddd;
+        border-radius: 3px 3px 0 0;
+        font-size: 13px;
+        font-weight: bold;
+        color: #333333;
+
+        i {
+            margin-right: 5px;
+            color: #777777;
+        }
+    }
+
+    .i2ccc-panel-body {
+        padding: 12px;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tab: temperature sensor cards
 // ---------------------------------------------------------------------------
 
@@ -133,19 +165,6 @@
 // ---------------------------------------------------------------------------
 
 #settings_plugin_I2CCaseController {
-    .panel {
-        margin-bottom: 10px;
-
-        .panel-heading {
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        .panel-body {
-            padding: 10px 15px;
-        }
-    }
-
     .i2ccc-help {
         color: #999999;
         font-size: 12px;
